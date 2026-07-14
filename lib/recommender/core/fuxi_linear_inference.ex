@@ -22,6 +22,8 @@ defmodule Recommender.Core.FuxiLinearInference do
   `docs/archived/FUXI_INCREMENTAL_DECODE_TOMBSTONE.md` for why the incremental path was removed.
   """
 
+  import Nx.Defn
+
   @n_embd 768
   @n_head 4
   @head_dim 32
@@ -222,35 +224,54 @@ defmodule Recommender.Core.FuxiLinearInference do
     # decay (n_head,) -> (1, n_head, 1, 1) for broadcasting
     decay_bc = Nx.reshape(decay, {1, @n_head, 1, 1})
 
-    # S: (batch, n_head, head_dim, head_dim). Iterate t, update S, compute out_t.
-    zero_s =
-      Nx.broadcast(Nx.tensor(0.0, type: {:f, 32}), {batch, @n_head, @head_dim, @head_dim})
-
-    {out_list, s_final} =
-      Enum.reduce(0..(seq_len - 1), {[], zero_s}, fn t, {out_acc, s} ->
-        k_t = Nx.slice_along_axis(k, t, 1, axis: 1) |> Nx.squeeze(axes: [1])
-        v_t = Nx.slice_along_axis(v, t, 1, axis: 1) |> Nx.squeeze(axes: [1])
-        q_t = Nx.slice_along_axis(q, t, 1, axis: 1) |> Nx.squeeze(axes: [1])
-
-        # k^T v outer product: (batch, n_head, head_dim, 1) * (batch, n_head, 1, head_dim) -> (batch, n_head, head_dim, head_dim)
-        k_t = Nx.new_axis(k_t, -1)
-        v_t = Nx.new_axis(v_t, 2)
-        kv = Nx.multiply(k_t, v_t)
-        s_new = Nx.add(Nx.multiply(decay_bc, s), kv)
-
-        # out_t = q_t @ s_new; batched (batch, n_head): (1, head_dim) @ (head_dim, head_dim)
-        q_flat = Nx.reshape(q_t, {batch * @n_head, 1, @head_dim})
-        s_flat = Nx.reshape(s_new, {batch * @n_head, @head_dim, @head_dim})
-        out_flat = Nx.dot(q_flat, [2], [0], s_flat, [1], [0])
-        out_t = Nx.reshape(out_flat, {batch, @n_head, @head_dim})
-        {[out_t | out_acc], s_new}
-      end)
-
-    out = Enum.reverse(out_list) |> Nx.stack(axis: 1)
+    # Recurrence over t, as a rolled `Nx.while` scan (not an Elixir-unrolled loop),
+    # so the compiled graph size is independent of seq_len. Certified equivalent to
+    # the fold in `formal/RecommenderModel.lean` (retention_rolled_eq_unrolled).
+    {out, s_final} = retention_scan(q, k, v, decay_bc)
     out = Nx.reshape(out, {batch, seq_len, @value_dim})
 
     out =
       layer_norm(out, params[base <> "retention.ln.weight"], params[base <> "retention.ln.bias"])
+
+    {out, s_final}
+  end
+
+  @doc """
+  Rolled linear-attention retention scan: `S_t = decay·S_{t-1} + k_t^T v_t`,
+  `out_t = q_t @ S_t`, as a single `Nx.while` over positions (dynamic slice in,
+  dynamic `put_slice` out) so the compiled graph size is independent of `seq_len`.
+
+  `q`/`k`/`v` are `{batch, seq_len, n_head, head_dim}`; `decay_bc` is
+  `{1, n_head, 1, 1}`. Returns `{out {batch, seq_len, n_head, head_dim}, s_final}`.
+  Public so its equivalence to the unrolled fold is directly testable; certified
+  in `formal/RecommenderModel.lean` (`retention_rolled_eq_unrolled`).
+  """
+  defn retention_scan(q, k, v, decay_bc) do
+    {batch, seq_len, n_head, head_dim} = Nx.shape(q)
+    s0 = Nx.broadcast(0.0, {batch, n_head, head_dim, head_dim})
+    out0 = Nx.broadcast(0.0, {batch, seq_len, n_head, head_dim})
+
+    # Nx `while` can only touch its loop-carried vars, so q/k/v/decay_bc are
+    # threaded through unchanged.
+    {_t, s_final, out, _q, _k, _v, _d} =
+      while {t = 0, s = s0, out = out0, q = q, k = k, v = v, decay_bc = decay_bc},
+            t < seq_len do
+        k_t = Nx.take(k, t, axis: 1)
+        v_t = Nx.take(v, t, axis: 1)
+        q_t = Nx.take(q, t, axis: 1)
+
+        # k^T v outer product -> {batch, n_head, head_dim, head_dim}
+        kv = Nx.new_axis(k_t, -1) * Nx.new_axis(v_t, 2)
+        s_new = decay_bc * s + kv
+
+        # out_t = q_t @ s_new, batched over (batch, n_head)
+        q_flat = Nx.reshape(q_t, {batch * n_head, 1, head_dim})
+        s_flat = Nx.reshape(s_new, {batch * n_head, head_dim, head_dim})
+        out_flat = Nx.dot(q_flat, [2], [0], s_flat, [1], [0])
+        out_t = Nx.reshape(out_flat, {batch, 1, n_head, head_dim})
+
+        {t + 1, s_new, Nx.put_slice(out, [0, t, 0, 0], out_t), q, k, v, decay_bc}
+      end
 
     {out, s_final}
   end
