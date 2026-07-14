@@ -2,13 +2,13 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "residual-fsq-recommender"
 abstract: >-
-  Sequential next-item recommendation in Elixir using only Holographic
-  Reduced Representation (HRR) phase-vector primitives — bind, unbind,
-  bundle, similarity. Item vectors are SHA-256-deterministic phase atoms;
-  a session is recalled from a bucketed hetero-associative transition
-  memory whose per-bucket superposition load is kept below the VSA
-  capacity bound. The phase algebra and cleanup-recall bounds are
-  certified in Lean 4 via fire/plausible-witness-dag.
+  Generative next-item recommendation in Elixir: a FuXi-Linear
+  linear-attention decoder over residual finite-scalar-quantization (FSQ)
+  semantic IDs. Each item is a four-token coarse-to-fine ID; the model
+  generates the next item's tokens under a trie constraint that keeps
+  decoding on valid catalog paths. Runs on Nx/EXLA. The semantic-ID codec
+  — a bijective per-stage index and an injective item key — is certified
+  in Lean 4 via fire/plausible-witness-dag.
 type: software
 authors:
   - family-names: Lee
@@ -19,11 +19,11 @@ repository-code: "https://github.com/weftspun/residual-fsq-recommender"
 license: MIT
 version: 0.2.0
 keywords:
-  - holographic reduced representations
-  - vector symbolic architecture
-  - hyperdimensional computing
+  - generative retrieval
+  - semantic IDs
+  - residual quantization
+  - linear attention
   - sequential recommendation
-  - hetero-associative memory
   - Elixir
   - Lean 4
 references:
