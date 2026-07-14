@@ -43,9 +43,8 @@ defmodule Recommender.Release.CockroachStep do
   [`V-Sekai/cockroach`](https://github.com/V-Sekai/cockroach) (22.1 LTS SQL
   store) and [`versity/versitygw`](https://github.com/versity/versitygw)
   (S3 gateway) single binaries, extract, and land them in the payload's
-  `lib/residual_fsq_recommender-*/priv/<tool>/` so
-  `Recommender.Adapters.CockroachStore.cockroach_bin/0` / the versitygw resolver find
-  them at runtime via `:code.priv_dir/1`.
+  `lib/residual_fsq_recommender-*/priv/<tool>/` so `CockroachLocal.bin/1` /
+  `VersitygwLocal.bin/1` find them at runtime via `:code.priv_dir/1`.
 
   Only the target being built is bundled — each triplet's binary carries one
   cockroach + one versitygw.
