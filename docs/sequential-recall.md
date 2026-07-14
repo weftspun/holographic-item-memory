@@ -1,5 +1,11 @@
 # Sequential recommendation with HRR primitives only
 
+> **Superseded (2026-07-14).** This records the training-free HRR baseline, removed in favor of the
+> FuXi-Linear generative recommender (see
+> [`20260714-drop-hrr-baseline-pure-fuxi-linear`](decisions/20260714-drop-hrr-baseline-pure-fuxi-linear.md)).
+> Kept as the historical empirical record the decision records cite; `Recommender.Core.HRR`/`Memory`
+> and `scripts/ml_eval.py` no longer exist.
+
 No ResidualFSQ, no neural network, no training. Everything below is built from the
 four `Recommender.Core.HRR` operations — `bind` (phase add), `unbind` (phase subtract),
 `bundle` (circular mean), `similarity` (phase cosine) — plus one order primitive,

@@ -1,99 +1,96 @@
 # residual-fsq-recommender
 
-Generative next-item recommender (FuXi-Linear linear-attention) over **ResidualFSQ semantic IDs**.
-Next-item recall in Elixir; the ID codec is certified in Lean 4 via
-[`fire/plausible-witness-dag`](https://github.com/fire/plausible-witness-dag).
+Generative next-item recommender (**FuXi-Linear** linear-attention) over **residual FSQ semantic
+IDs**, in Elixir on [Nx](https://github.com/elixir-nx/nx)/EXLA. The ID codec is
+certified in Lean 4 via [`fire/plausible-witness-dag`](https://github.com/fire/plausible-witness-dag).
 
-Companion to [`weftspun/multimodal-semantic-ids`](https://github.com/weftspun/multimodal-semantic-ids)
-(successor line of `vsk-session-item-recommendation-01`): that repo's Python pipeline encodes each
-asset's modalities (text / image / mesh / audio / body-phenotype) with FOSS encoders, concatenates
-them into one fused vector, and quantizes it with a single ResidualFSQ
-(`levels = [8,8,8,8]`, `num_quantizers = 3`) into a per-asset **semantic ID** — 3 tokens, each in
-`0..4095`. This repo consumes those IDs as plain `{item_id, [t0, t1, t2]}` pairs and answers
-"what comes next in this session?" without any neural model or training step.
+Each item is a 4-token semantic ID `[t0, t1, t2, t3]`, each token in `0..4095`, produced by a
+coarse-to-fine residual FSQ quantizer (`levels = [8,8,8,8]`, 4 stages). A linear-attention decoder
+predicts the next item's four tokens; a trie constrains decoding to real catalog IDs.
 
-Two modules, one runtime dependency (`Nx`):
+## Layout (hexagonal — `core` / `ports` / `adapters`)
 
-- `Recommender.Core.HRR` — phase-vector algebra; SHA-256-deterministic atoms; f64 `Nx` tensors.
-- `Recommender.Core.Memory` — the recommender: immutable struct, no processes, no storage backend.
+- `Recommender.Core.FSQ` / `Recommender.Core.ResidualFSQ` — the residual FSQ codec: content
+  embeddings → 4-token IDs, plus the ID contract (`valid_id?/1`, `tokens_per_item/0`,
+  `codebook_size/0`) every consumer shares.
+- `Recommender.Core.FuxiLinearInference*` — the FuXi-Linear model (Retention + linear temporal /
+  positional channels + mFFN), O(n) in sequence length.
+- `Recommender.Core.{Decode,Trie,Training,Eval}` — trie-constrained beam / multi-token-prediction
+  decode, training losses (shifted cross-entropy + MTP), and Hit@k / MRR metrics.
+- `Recommender.Adapters.Serve` — wires the forward pass + constrained decode + catalog into
+  `recommend/3`.
+- `Recommender.Adapters.CockroachStore` / `VersityBlobStore` — embedded CockroachDB (items and
+  session transitions) and a Versity S3 blob store; the host lifecycles come from
+  [`weftspun/cockroach-local`](https://github.com/weftspun/cockroach-local) and
+  [`weftspun/versitygw-local`](https://github.com/weftspun/versitygw-local).
+- `Recommender.Adapters.CLI` — the standalone `rfr` binary.
 
-## How it works
+Coarse mass lands in `t0`, so similar items share ID prefixes; the decoder generates an ID prefix-first
+and the trie keeps every beam on a valid catalog path.
 
-Holographic Reduced Representations (Plate 1995) over phase vectors: every concept is a vector of
-angles in `[0, 2π)`, generated deterministically from SHA-256 — identical across machines and
-languages (bit-for-bit parity with the Python reference is tested).
+## Semantic IDs
 
-| Operation | Implementation | Meaning |
-|-----------|----------------|---------|
-| `bind(a, b)` | phase addition (mod 2π) | associate two concepts |
-| `unbind(m, k)` | phase subtraction | retrieve: `unbind(bind(a,b), a) ≈ b` |
-| `bundle(vs)` | circular mean | superpose; holds `O(√dim)` items |
-| `similarity(a, b)` | `mean(cos(a−b))` | phase cosine, `[-1, 1]` |
-
-The semantic ID **is** the item representation (`Recommender.Core.Memory.item_vector/3`):
-
-```
-item = bundle(bind(atom("sid:q0:t0"), ROLE_Q0),
-              bind(atom("sid:q1:t1"), ROLE_Q1),
-              bind(atom("sid:q2:t2"), ROLE_Q2))
-```
-
-Items sharing coarse (early-stage) ResidualFSQ tokens land near each other — the quantizer's
-coarse-to-fine structure becomes vector similarity. Two recall signals combine in `Recommender.Core.Memory`:
-
-- **Content (zero-shot):** the session's recent item vectors are bundled; candidates are ranked by
-  similarity. A brand-new asset is recommendable the moment it has an ID: encode → atoms → vector.
-  No retraining.
-- **Transitions (online, optional):** observed `a → b` steps superpose into one hetero-associative
-  bank `T = bundle(bind(vec a, vec b), …)`. Probing `unbind(T, vec last)` yields a noisy `vec next`;
-  cleanup against the catalog ranks it. Capacity `O(√dim)`; `snr_estimate/1` warns past it.
-
-## Usage
+`Recommender.Core.ResidualFSQ` tokenizes content embeddings without a trained checkpoint (a seeded
+projection makes it reproducible), or loads a trained projection from a checkpoint:
 
 ```elixir
-# pairs from wherever you read asset_semantic_id.parquet: {item_id, [t0, t1, t2]}
-mem =
-  Recommender.Core.Memory.new(dim: 4096)
-  |> Recommender.Core.Memory.add_items([
-    {"sword-01", [17, 900, 3]},
-    {"shield-03", [17, 901, 44]},
-    {"helm-11", [2000, 31, 999]}
-  ])
-  |> Recommender.Core.Memory.observe(["sword-01", "shield-03", "helm-11"])   # optional online learning
-
-{:ok, recs} = Recommender.Core.Memory.recommend(mem, ["sword-01", "shield-03"], top_k: 5)
-# => [{"helm-11", 0.41}, ...]
+ids = Recommender.Core.ResidualFSQ.encode_ids(embeddings)   # [[t0, t1, t2, t3], ...]
+true = Recommender.Core.ResidualFSQ.valid_id?(hd(ids))
 ```
+
+The packing `itemKey [t0,t1,t2,t3] = t0 + t1·4096 + t2·4096² + t3·4096³` is injective over valid IDs
+(certified in Lean), so an ID maps to one catalog slot.
+
+## Serving
+
+`Serve` runs the trained model over a catalog (`token_id_list`, index = item index) and returns the
+top-k next-item indices:
+
+```elixir
+# defn_params from a trained checkpoint (Recommender.Adapters.NpyCheckpointSource +
+# Recommender.Core.FuxiLinearInferenceParams.build_defn_params/2)
+serve = Recommender.Adapters.Serve.new(defn_params, token_id_list)
+{:ok, item_indices} = Recommender.Adapters.Serve.recommend(serve, [0, 3], 5)
+```
+
+Recommendation needs a trained checkpoint; `Serve.from_init/2` builds a random-weight engine that
+exercises the full pipeline for smoke tests. Training runs on a GPU host
+(`Recommender.Adapters.AxonTrainer` + `Recommender.Core.Training`) over gate-clean corpora
+(`Recommender.Core.Trajectories.LicenseGate`: CC0 / MIT / Apache-2.0 / CC-BY, English/Western).
+
+## CLI (`rfr`)
+
+```
+rfr add <item_id> <t0> <t1> <t2> <t3>          store an item's semantic ID
+rfr add --json                                 bulk add from stdin
+rfr observe <id> <id> [...]                    record a session's transitions
+rfr recommend <id> [...] --checkpoint <dir>    next-item recall (JSON)
+rfr items [--limit N]                          list stored items (JSON)
+rfr blob put|get|list                          content-addressed blob store
+rfr db start                                   run the embedded CockroachDB
+```
+
+Persistence goes through the driven ports; the standalone binary bundles the `cockroach` and
+`versitygw` single binaries per target.
 
 ## Formal model (`formal/`)
 
-`RecommenderModel.lean` (Lean 4.30, built on `plausible-witness-dag`) certifies, by `omega` — symbolic, no
-enumeration, so it holds at the real 4096-code / 4096³-key scale:
-
-- `stage_bound` / `stage_roundtrip` / `stage_injective` / `itemKey_injective` — the upstream
-  ResidualFSQ ID format this library consumes: the stage index codec is a bijection onto `0..4095`,
-  and distinct semantic IDs never collide. (Deliberately no Elixir mirror — the theorems certify
-  the contract itself.)
-- `unbind_bind` — HRR retrieval is **exact** on the uint16 phase grid the atoms are generated on;
-  the float implementation adds only representation noise.
-- Transition recall is certified as a `plausible-witness-dag` witness: a budgeted cleanup scan
-  recovers the stored successor; the shallow ladder rung budget-hits, the deeper rung resolves.
+`RecommenderModel.lean` (built on `plausible-witness-dag`) certifies the ID codec by `omega` — symbolic,
+so it holds at the real 4096-code / 4096⁴-key scale: `stage_bound`, `stage_roundtrip`,
+`stage_injective`, and `itemKey_injective` (the stage index is a bijection onto `0..4095`, and distinct
+IDs never collide).
 
 ```bash
 cd formal
-lake build                    # type-checks the omega proofs
-lake exe recommender-sample   # -> resolved level: L1 ; recalled successor: item 3
+lake build
 ```
 
 ## Tests
 
 ```bash
 mix deps.get
-mix test
+mix test          # runs on EXLA (config/config.exs)
 ```
-
-Includes golden-value parity tests against the Python reference HRR implementation
-(`test/fixtures/hrr_golden.json`, regenerable with `scripts/gen_golden.py`).
 
 ## License
 
