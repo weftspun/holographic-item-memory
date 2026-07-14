@@ -1,0 +1,8 @@
+{
+  "captured": "2026-07-14",
+  "domain": "calibrate-pretrain-estimate",
+  "domain_file": "priv/plans/domains/calibrate-pretrain-estimate.jsonld",
+  "total": "PT1H30M",
+  "note": "Calibration run to resolve the pretrain estimate's unknowns. Probes 2/3/5 -> `mix recommender.bench`. #5 (real GPU s/step) dominates the outcome.",
+  "plan": ["point_at_dataset","measure_dataset_size","measure_embed_throughput","build_xla_cuda","measure_gpu_train_step","recompute_training_estimate","reestimate_and_snapshot"]
+}

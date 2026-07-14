@@ -110,6 +110,26 @@ defmodule Recommender.Core.Training do
     {batch_seq, batch_labels, batch_aux_embeds, embed_mask, all_timestamps}
   end
 
+  @doc """
+  Reshape per-item content embeddings `{num_items, 768}` into the
+  `{num_items, @tokens_per_item, 192}` aux tensor the model consumes — one 192-d
+  sub-embedding per residual stage. Requires 768-d (= `@tokens_per_item × 192`),
+  the same single embedding that feeds `ResidualFSQ.project_in` for the IDs, so ID
+  and aux share one space.
+  """
+  @spec item_aux_embeddings(Nx.Tensor.t()) :: Nx.Tensor.t()
+  def item_aux_embeddings(embeddings) do
+    {n, d} = Nx.shape(embeddings)
+    expected = @tokens_per_item * 192
+
+    if d != expected do
+      raise ArgumentError,
+            "expected #{expected}-d (#{@tokens_per_item}×192) item embeddings, got #{d}-d"
+    end
+
+    Nx.reshape(embeddings, {n, @tokens_per_item, 192})
+  end
+
   def encode_aux(batch_ids, item_embeddings, num_items) do
     embed_mask = Enum.map(batch_ids, fn id -> if id >= 0, do: 1.0, else: 0.0 end)
     embeds_ids = Enum.map(batch_ids, fn id -> if id >= 0 and id < num_items, do: id, else: 0 end)

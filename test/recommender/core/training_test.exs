@@ -8,6 +8,18 @@ defmodule Recommender.Core.TrainingTest do
 
   @vocab 4097
 
+  test "item_aux_embeddings reshapes {N,768} -> {N,4,192} faithfully" do
+    emb = Nx.iota({5, 768}, type: {:f, 32})
+    aux = Training.item_aux_embeddings(emb)
+    assert Nx.shape(aux) == {5, 4, 192}
+    # reshape preserves data row-major: aux[i] flattened == emb[i]
+    assert Nx.to_flat_list(aux[0]) == Nx.to_flat_list(emb[0])
+  end
+
+  test "item_aux_embeddings rejects a non-768 embedding dim" do
+    assert_raise ArgumentError, fn -> Training.item_aux_embeddings(Nx.broadcast(0.0, {3, 512})) end
+  end
+
   test "loss_shifted_ce is a finite non-negative scalar" do
     logits = Nx.broadcast(0.0, {2, 8, @vocab})
     labels = Nx.tensor([[1, 2, 3, 4, 5, 6, 7, 8], [8, 7, 6, 5, 4, 3, 2, 1]], type: {:s, 32})

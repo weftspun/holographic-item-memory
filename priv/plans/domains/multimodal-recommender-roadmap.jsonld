@@ -1,0 +1,50 @@
+{
+  "@context": { "vsekai": "https://v-sekai.org/", "domain": "vsekai:planning/domain/" },
+  "@type": "domain:Definition",
+  "name": "multimodal-recommender-roadmap",
+  "_doc": "HTN domain for `taskweft plan`. Baseline-first (bootstrap 768-d embedding) → build the multimodal embedder (Qwen3-VL + mesh VAE → fuse) → upgrade the recommender onto the fused embedding. See docs/multimodal-recommender-roadmap.md.",
+  "variables": [
+    { "name": "done", "init": {
+      "boot_embed": false, "b_data": false, "b_tok": false, "b_train": false, "b_eval": false, "b_serve": false,
+      "q_feat": false, "q_fusion": false, "q_reg": false, "q_e2e": false, "q_wire": false,
+      "m_kernels": false, "m_slang": false, "m_verify": false,
+      "fused": false, "u_tok": false, "u_train": false, "u_eval": false } }
+  ],
+  "actions": {
+    "bootstrap_embed_mpnet_768": { "params": [], "body": [{ "pointer/set": "/done/boot_embed", "value": true }] },
+    "ingest_amazon_cc0": { "params": [], "body": [{ "pointer/set": "/done/b_data", "value": true }] },
+    "tokenize_catalog_bootstrap": { "params": [], "body": [{ "pointer/set": "/done/b_tok", "value": true }] },
+    "train_fuxi_gpu_bootstrap": { "params": [], "body": [{ "pointer/set": "/done/b_train", "value": true }] },
+    "eval_hitk_vs_popularity": { "params": [], "body": [{ "pointer/set": "/done/b_eval", "value": true }] },
+    "serve_bootstrap_checkpoint": { "params": [], "body": [{ "pointer/set": "/done/b_serve", "value": true }] },
+    "qwen3vl_featurizer": { "params": [], "body": [{ "pointer/set": "/done/q_feat", "value": true }] },
+    "qwen3vl_fusion_mrope_deepstack": { "params": [], "body": [{ "pointer/set": "/done/q_fusion", "value": true }] },
+    "qwen3vl_registry": { "params": [], "body": [{ "pointer/set": "/done/q_reg", "value": true }] },
+    "qwen3vl_e2e_verify_golden": { "params": [], "body": [{ "pointer/set": "/done/q_e2e", "value": true }] },
+    "qwen3vl_wire_embedder": { "params": [], "body": [{ "pointer/set": "/done/q_wire", "value": true }] },
+    "mesh_author_kernels_lean": { "params": [], "body": [{ "pointer/set": "/done/m_kernels", "value": true }] },
+    "mesh_emit_slang_spirv": { "params": [], "body": [{ "pointer/set": "/done/m_slang", "value": true }] },
+    "mesh_verify_encoder_forward": { "params": [], "body": [{ "pointer/set": "/done/m_verify", "value": true }] },
+    "build_unified_embedder_768": { "params": [], "body": [{ "pointer/set": "/done/fused", "value": true }] },
+    "retokenize_with_fused": { "params": [], "body": [{ "pointer/set": "/done/u_tok", "value": true }] },
+    "retrain_fuxi_fused": { "params": [], "body": [{ "pointer/set": "/done/u_train", "value": true }] },
+    "reeval_fused": { "params": [], "body": [{ "pointer/set": "/done/u_eval", "value": true }] }
+  },
+  "methods": {
+    "ship": { "params": [], "alternatives": [{ "name": "baseline_then_multimodal",
+      "subtasks": [["baseline_first"], ["multimodal_embedder"], ["recommender_upgrade"]] }] },
+    "baseline_first": { "params": [], "alternatives": [{ "name": "bootstrap",
+      "subtasks": [["bootstrap_embed_mpnet_768"], ["ingest_amazon_cc0"], ["tokenize_catalog_bootstrap"],
+                   ["train_fuxi_gpu_bootstrap"], ["eval_hitk_vs_popularity"], ["serve_bootstrap_checkpoint"]] }] },
+    "multimodal_embedder": { "params": [], "alternatives": [{ "name": "two_tracks_then_fuse",
+      "subtasks": [["finish_qwen3vl"], ["build_mesh_vae"], ["build_unified_embedder_768"]] }] },
+    "finish_qwen3vl": { "params": [], "alternatives": [{ "name": "port",
+      "subtasks": [["qwen3vl_featurizer"], ["qwen3vl_fusion_mrope_deepstack"], ["qwen3vl_registry"],
+                   ["qwen3vl_e2e_verify_golden"], ["qwen3vl_wire_embedder"]] }] },
+    "build_mesh_vae": { "params": [], "alternatives": [{ "name": "slang_lean",
+      "subtasks": [["mesh_author_kernels_lean"], ["mesh_emit_slang_spirv"], ["mesh_verify_encoder_forward"]] }] },
+    "recommender_upgrade": { "params": [], "alternatives": [{ "name": "onto_fused",
+      "subtasks": [["retokenize_with_fused"], ["retrain_fuxi_fused"], ["reeval_fused"]] }] }
+  },
+  "tasks": [["ship"]]
+}

@@ -43,6 +43,12 @@ defmodule Mix.Tasks.Recommender.Pretrain do
     * `--batch-size N`   sessions per batch (default 8)
     * `--seed N`         PRNG seed (default 0)
     * `--items N` / `--sessions N` / `--session-len N`  synthetic sizes
+
+  ## Real data
+    * `--data DIR`       dataset root — sessions via `TrajectoryConvert`
+    * `--dataset NAME`   gate-clean dataset name (default `open-ecommerce`)
+    * `--item-text CSV`  item_id + text columns → `BumblebeeEmbedding` 768-d → IDs + aux
+      (`DatasetPrep.build/4`). Needs a GPU for a real run.
   """
   use Mix.Task
 
@@ -61,25 +67,17 @@ defmodule Mix.Tasks.Recommender.Pretrain do
           seed: :integer,
           items: :integer,
           sessions: :integer,
-          session_len: :integer
+          session_len: :integer,
+          data: :string,
+          dataset: :string,
+          item_text: :string
         ]
       )
 
     {:ok, _} = Application.ensure_all_started(:exla)
-
     seed = opts[:seed] || 0
-    n_items = opts[:items] || 40
-    n_sessions = opts[:sessions] || 32
-    slen = opts[:session_len] || 8
 
-    Mix.shell().info("SYNTHETIC smoke data — not a real model (see `mix help recommender.pretrain`)")
-
-    :rand.seed(:exsss, {seed + 1, seed + 2, seed + 3})
-    seqs = for _ <- 1..n_sessions, do: for(_ <- 1..slen, do: :rand.uniform(n_items) - 1)
-    token_id_list = for _ <- 1..n_items, do: for(_ <- 1..4, do: :rand.uniform(4096) - 1)
-
-    {item_embeddings, _} =
-      Nx.Random.normal(Nx.Random.key(seed), 0.0, 1.0, shape: {n_items, 4, 192}, type: {:f, 32})
+    {seqs, token_id_list, item_embeddings, n_items, n_sessions} = build_inputs(opts, seed)
 
     Mix.shell().info("init random params (seed #{seed}), #{n_items} items, #{n_sessions} sessions")
     params = FuxiLinearInference.init_random_params(seed: seed)
@@ -102,6 +100,31 @@ defmodule Mix.Tasks.Recommender.Pretrain do
       :ok = NpyCheckpointSink.write_export(trained, out)
       Mix.shell().info("checkpoint -> #{out} (#{map_size(trained)} tensors)")
     end
+  end
+
+  # --- real data: sessions (TrajectoryConvert) + one 768-d embedding per item
+  # (item text -> Bumblebee) -> Prep -> {sessions_idx, token_id_list, {N,4,192} aux} ---
+  defp build_inputs(%{data: dir} = opts, _seed) do
+    dataset = opts[:dataset] || "open-ecommerce"
+    csv = opts[:item_text] || Mix.raise("--data needs --item-text CSV (item_id + text columns)")
+    Mix.shell().info("REAL data: #{dataset} @ #{dir}")
+    {sidx, tids, aux, item_ids} = Recommender.Adapters.DatasetPrep.build(dataset, dir, csv)
+    {sidx, tids, aux, length(item_ids), length(sidx)}
+  end
+
+  defp build_inputs(opts, seed) do
+    n_items = opts[:items] || 40
+    n_sessions = opts[:sessions] || 32
+    slen = opts[:session_len] || 8
+    Mix.shell().info("SYNTHETIC smoke data — not a real model (see `mix help recommender.pretrain`)")
+    :rand.seed(:exsss, {seed + 1, seed + 2, seed + 3})
+    seqs = for _ <- 1..n_sessions, do: for(_ <- 1..slen, do: :rand.uniform(n_items) - 1)
+    token_id_list = for _ <- 1..n_items, do: for(_ <- 1..4, do: :rand.uniform(4096) - 1)
+
+    {emb, _} =
+      Nx.Random.normal(Nx.Random.key(seed), 0.0, 1.0, shape: {n_items, 4, 192}, type: {:f, 32})
+
+    {seqs, token_id_list, emb, n_items, n_sessions}
   end
 
   defp fmt(l) when is_float(l), do: Float.round(l, 4) |> Float.to_string()

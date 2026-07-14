@@ -1,0 +1,38 @@
+{
+  "@context": { "vsekai": "https://v-sekai.org/", "domain": "vsekai:planning/domain/" },
+  "@type": "domain:Definition",
+  "name": "real-data-pretrain-path-temporal",
+  "_estimate_basis": "measured on CPU-EXLA host 2026-07-14: tokenize 12171 items/s; FuXi train ~3.7s/step (b=8, seq=1024). train_fuxi_gpu assumes ~100k sessions, batch 8, 3 epochs (~37.5k steps) at ~0.75s/step (5x GPU over 3.7s CPU; the retention is a sequential 1024-step recurrence, so GPU speedup is latency-limited). Durations are estimates — re-plan when the real dataset size and GPU epoch time are known.",
+  "variables": [
+    { "name": "done", "init": {
+      "staged": false, "converted": false, "split": false, "text_loaded": false, "embedded_768": false,
+      "ids_encoded": false, "aux_built": false, "catalog_persisted": false, "pretrain_data_mode": false,
+      "trained": false, "evaluated": false } }
+  ],
+  "actions": {
+    "stage_amazon_cc0": { "params": [], "duration": "PT30M", "body": [{ "pointer/set": "/done/staged", "value": true }] },
+    "convert_trajectories": { "params": [], "duration": "PT10M", "body": [{ "pointer/set": "/done/converted", "value": true }] },
+    "chrono_split_loo": { "params": [], "duration": "PT5M", "body": [{ "pointer/set": "/done/split", "value": true }] },
+    "load_item_text": { "params": [], "duration": "PT10M", "body": [{ "pointer/set": "/done/text_loaded", "value": true }] },
+    "embed_items_768_bumblebee": { "params": [], "duration": "PT40M", "body": [{ "pointer/set": "/done/embedded_768", "value": true }] },
+    "residual_fsq_encode_ids": { "params": [], "duration": "PT2M", "body": [{ "pointer/set": "/done/ids_encoded", "value": true }] },
+    "build_item_aux_4x192": { "params": [], "duration": "PT2M", "body": [{ "pointer/set": "/done/aux_built", "value": true }] },
+    "persist_catalog_crdb": { "params": [], "duration": "PT10M", "body": [{ "pointer/set": "/done/catalog_persisted", "value": true }] },
+    "wire_pretrain_data_mode": { "params": [], "duration": "PT2H", "body": [{ "pointer/set": "/done/pretrain_data_mode", "value": true }] },
+    "train_fuxi_gpu": { "params": [], "duration": "PT8H", "body": [{ "pointer/set": "/done/trained", "value": true }] },
+    "eval_real_checkpoint": { "params": [], "duration": "PT30M", "body": [{ "pointer/set": "/done/evaluated", "value": true }] }
+  },
+  "methods": {
+    "real_baseline": { "params": [], "alternatives": [{ "name": "end_to_end",
+      "subtasks": [["prep_data"], ["prep_embeddings"], ["tokenize_and_persist"], ["wire_and_train"], ["eval_real_checkpoint"]] }] },
+    "prep_data": { "params": [], "alternatives": [{ "name": "amazon_cc0",
+      "subtasks": [["stage_amazon_cc0"], ["convert_trajectories"], ["chrono_split_loo"]] }] },
+    "prep_embeddings": { "params": [], "alternatives": [{ "name": "text_768",
+      "subtasks": [["load_item_text"], ["embed_items_768_bumblebee"]] }] },
+    "tokenize_and_persist": { "params": [], "alternatives": [{ "name": "fsq_then_store",
+      "subtasks": [["residual_fsq_encode_ids"], ["build_item_aux_4x192"], ["persist_catalog_crdb"]] }] },
+    "wire_and_train": { "params": [], "alternatives": [{ "name": "data_mode_gpu",
+      "subtasks": [["wire_pretrain_data_mode"], ["train_fuxi_gpu"]] }] }
+  },
+  "tasks": [["real_baseline"]]
+}
