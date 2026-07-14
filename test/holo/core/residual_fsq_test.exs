@@ -6,7 +6,6 @@ defmodule Holo.Core.ResidualFSQTest do
   use ExUnitProperties
 
   alias Holo.Core.ResidualFSQ
-  alias Holo.Core.Memory
 
   # Deterministic pseudo-random embeddings (no RNG state): a fixed spread.
   defp embeddings(n, d) do
@@ -45,17 +44,16 @@ defmodule Holo.Core.ResidualFSQTest do
     end
   end
 
-  describe "encode_ids/2 feeds Holo.Core.Memory" do
-    test "every emitted ID satisfies Memory.valid_id?/1" do
+  describe "encode_ids/2 emits the shared ID contract" do
+    test "every emitted ID satisfies ResidualFSQ.valid_id?/1" do
       ids = ResidualFSQ.encode_ids(embeddings(50, 384))
-      assert Enum.all?(ids, &Memory.valid_id?/1)
+      assert Enum.all?(ids, &ResidualFSQ.valid_id?/1)
     end
 
-    test "IDs load into a Memory as {item_id, tokens}" do
+    test "produces one 4-token id per embedding row" do
       ids = ResidualFSQ.encode_ids(embeddings(20, 128))
-      items = ids |> Enum.with_index() |> Enum.map(fn {tokens, i} -> {i, tokens} end)
-      mem = Memory.add_items(Memory.new(), items)
-      assert mem != nil
+      assert length(ids) == 20
+      assert Enum.all?(ids, &(length(&1) == ResidualFSQ.tokens_per_item()))
     end
   end
 

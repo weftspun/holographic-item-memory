@@ -18,7 +18,7 @@ defmodule Holo.Adapters.FixtureStore do
   end
 
   @impl Holo.Ports.ItemSink
-  def upsert_item(agent, item_id, [_, _, _] = semantic_id) do
+  def upsert_item(agent, item_id, [_, _, _, _] = semantic_id) do
     Agent.update(agent, &put_in(&1, [:items, item_id], semantic_id))
   end
 

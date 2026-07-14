@@ -16,11 +16,14 @@ defmodule Holo.Core.ResidualFSQ do
         r_{s+1} = r_s - quantize(r_s)             # carry the residual to the next, finer stage
 
   Each `t_s` is a full 4096-code stage index (`Holo.Core.FSQ`, levels `[8,8,8,8]`),
-  and the sequence `[t0, t1, t2, t3]` (`num_quantizers = 4`) is the semantic ID both
-  `Holo.Core.Memory` (HRR) and the FuXi-Linear model consume. Because coarse mass
-  lands in `t0`, similar items share ID prefixes — the property residual (not
-  grouped) FSQ gives, and the one `Holo.Core.Memory.valid_id?/1` and
-  `HoloModel.itemKey_injective` certify.
+  and the sequence `[t0, t1, t2, t3]` (`num_quantizers = 4`) is the semantic ID the
+  FuXi-Linear model consumes. Because coarse mass lands in `t0`, similar items share
+  ID prefixes — the property residual (not grouped) FSQ gives, and the one `valid_id?/1`
+  and `HoloModel.itemKey_injective` certify.
+
+  This module also owns the **semantic-ID contract** (`tokens_per_item/0`,
+  `codebook_size/0`, `valid_id?/1`) that every consumer — the CLI, the store
+  adapters, and `Holo.Adapters.Serve` — shares.
 
   `project_in` maps the embedding into the 4-dim quantization space. Supply real
   weights via `opts[:params]` (`%{"project_in" => %{"kernel" => k, "bias" => b}}`);
@@ -36,6 +39,23 @@ defmodule Holo.Core.ResidualFSQ do
   @doc "Default number of residual stages (tokens per item): 4."
   def default_num_quantizers, do: @default_num_quantizers
 
+  @doc "Tokens per semantic ID (= number of residual stages): 4."
+  def tokens_per_item, do: @default_num_quantizers
+
+  @doc "Codes per stage (each token is in `0..codebook_size-1`): #{FSQ.codebook()}."
+  def codebook_size, do: FSQ.codebook()
+
+  @doc """
+  True iff `tokens` is a valid semantic ID: a list of exactly `tokens_per_item/0`
+  integers, each in `0..codebook_size-1`. The single source of truth every
+  consumer (CLI, store adapters, `Holo.Adapters.Serve`) shares.
+  """
+  @spec valid_id?(term()) :: boolean()
+  def valid_id?(tokens) do
+    is_list(tokens) and length(tokens) == @default_num_quantizers and
+      Enum.all?(tokens, &(is_integer(&1) and &1 >= 0 and &1 < FSQ.codebook()))
+  end
+
   @doc """
   Encode a batch of embeddings `{n, d}` into a token tensor `{n, num_quantizers}`
   of `s32` stage indices in `0..4095`.
@@ -43,7 +63,7 @@ defmodule Holo.Core.ResidualFSQ do
   ## Options
     * `:params` — FSQ projection params (`project_in` kernel/bias); default: a
       deterministic seeded projection derived from the embedding dim.
-    * `:num_quantizers` — stages / tokens per item (default 3).
+    * `:num_quantizers` — stages / tokens per item (default 4).
   """
   @spec encode(Nx.Tensor.t(), keyword()) :: Nx.Tensor.t()
   def encode(embeddings, opts \\ []) do
@@ -67,8 +87,8 @@ defmodule Holo.Core.ResidualFSQ do
   end
 
   @doc """
-  Encode embeddings into a list of `[t0, t1, t2, t3]` integer token lists — the form
-  `Holo.Core.Memory.add_items/2` consumes.
+  Encode embeddings into a list of `[t0, t1, t2, t3]` integer token lists — the
+  catalog form the store adapters persist and `Holo.Adapters.Serve` consumes.
   """
   @spec encode_ids(Nx.Tensor.t(), keyword()) :: [[non_neg_integer()]]
   def encode_ids(embeddings, opts \\ []) do

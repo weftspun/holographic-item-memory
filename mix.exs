@@ -13,10 +13,10 @@ defmodule Holo.MixProject do
       deps: deps(),
       releases: releases(),
       description:
-        "Holographic (HRR phase-vector) item memory over concat-vector ResidualFSQ " <>
-          "semantic IDs. Zero-shot next-item recall; phase algebra and ID codec certified " <>
-          "in Lean via plausible-witness-dag. Ships as a self-contained Burrito binary " <>
-          "with an embedded CockroachDB store.",
+        "Generative next-item recommender (RecGPT / FuXi-Linear linear-attention) over " <>
+          "residual FSQ semantic IDs. Trie-constrained beam decode; ID codec certified in " <>
+          "Lean via plausible-witness-dag. Ships as a self-contained Burrito binary with an " <>
+          "embedded CockroachDB store.",
       package: [
         licenses: ["MIT"],
         links: %{"GitHub" => @source_url}
@@ -77,6 +77,12 @@ defmodule Holo.MixProject do
       {:req, "~> 0.5"},
       {:explorer, "~> 0.11"},
       {:postgrex, "~> 0.19"},
+      # Local database / object-storage hosts, extracted to their own repos
+      # (../cockroach_local, ../versitygw_local). Uncomment once pushed to
+      # weftspun, then refactor CockroachStore / VersityBlobStore to delegate
+      # their host lifecycle (provision + start/stop) to these.
+      # {:cockroach_local, github: "weftspun/cockroach_local"},
+      # {:versitygw_local, github: "weftspun/versitygw_local"},
       {:aria_storage, github: "V-Sekai-fire/aria-storage"},
       {:ex_aws, "~> 2.4"},
       {:ex_aws_s3, "~> 2.4"},

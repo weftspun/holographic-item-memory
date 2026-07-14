@@ -11,8 +11,8 @@ defmodule Holo.Adapters.CLI do
       holo add --json                          bulk add from stdin:
                                                [{"item_id": "...", "semantic_id": [t0,t1,t2,t3]}, ...]
       holo observe <id> <id> [...]             record a session's transitions
-      holo recommend <id> [...] [--top-k N]    next-item recall for a session (JSON)
-                     [--include-seen]
+      holo recommend <id> [...] [--top-k N]    next-item recall for a session (JSON);
+                     --checkpoint <dir>        FuXi-Linear model over the stored catalog
       holo items [--limit N]                   list stored items (JSON)
       holo blob put <name> <file>              chunk + store a file (aria-storage -> S3)
       holo blob get <name> <out>               reassemble a stored blob
@@ -29,7 +29,7 @@ defmodule Holo.Adapters.CLI do
       --s3-port N       embedded versitygw S3 port (default 7070)
       --db-url URL      connect to an external cockroach/postgres instead of
                         starting the embedded node
-      --dim N           HRR vector dimensionality (default #{Holo.Core.HRR.default_dim()})
+      --checkpoint DIR  npy export dir of trained FuXi-Linear params (recommend)
 
   ## Structure
 
@@ -44,8 +44,8 @@ defmodule Holo.Adapters.CLI do
 
   alias Holo.Adapters.CockroachStore, as: Store
   alias Holo.Adapters.VersityBlobStore, as: Blob
-  alias Holo.Core.HRR
-  alias Holo.Core.Memory
+  alias Holo.Adapters.{NpyCheckpointSource, Serve}
+  alias Holo.Core.{FuxiLinearInferenceParams, ResidualFSQ}
   alias Holo.Ports.ItemSource
 
   @version Mix.Project.config()[:version]
@@ -111,9 +111,8 @@ defmodule Holo.Adapters.CLI do
           port: :integer,
           s3_port: :integer,
           db_url: :string,
-          dim: :integer,
+          checkpoint: :string,
           top_k: :integer,
-          include_seen: :boolean,
           limit: :integer,
           json: :boolean
         ]
@@ -161,27 +160,65 @@ defmodule Holo.Adapters.CLI do
     do: {:error, "usage: holo observe <item_id> <item_id> [...]  (at least 2 ids)", 2}
 
   defp cmd_recommend([], _opts),
-    do: {:error, "usage: holo recommend <item_id> [...] [--top-k N] [--include-seen]", 2}
+    do:
+      {:error, "usage: holo recommend <item_id> [...] [--top-k N] --checkpoint <export_dir>", 2}
 
-  defp cmd_recommend(session, opts) do
+  defp cmd_recommend(session, %{checkpoint: ckpt_dir} = opts) do
     Store.with_db(store_opts(opts), fn conn ->
-      mem = ItemSource.load_memory(Store, conn, dim: opts[:dim] || HRR.default_dim())
+      {token_id_list, item_ids} = ItemSource.load_catalog(Store, conn)
 
-      case Memory.recommend(mem, session,
-             top_k: opts[:top_k] || 5,
-             exclude_seen: !opts[:include_seen]
-           ) do
-        {:ok, recs} ->
-          {:ok,
-           Jason.encode!(
-             Enum.map(recs, fn {id, score} -> %{item_id: id, score: Float.round(score, 6)} end)
-           )}
+      cond do
+        token_id_list == [] ->
+          {:error, "holo: no items stored", 1}
 
-        {:error, reason} ->
-          {:error, "holo: #{reason}", 1}
+        true ->
+          index_of = item_ids |> Enum.with_index() |> Map.new()
+
+          case map_session(session, index_of) do
+            {:missing, missing} ->
+              {:error, "holo: unknown item id(s): #{Enum.join(missing, ", ")}", 1}
+
+            {:ok, context} ->
+              serve =
+                ckpt_dir
+                |> NpyCheckpointSource.load_from_export()
+                |> FuxiLinearInferenceParams.build_defn_params()
+                |> Serve.new(token_id_list)
+
+              case Serve.recommend(serve, context, opts[:top_k] || 5) do
+                {:ok, indices} ->
+                  ids = Enum.map(indices, &Enum.at(item_ids, &1))
+                  {:ok, Jason.encode!(Enum.map(ids, &%{item_id: &1}))}
+
+                :not_found ->
+                  {:ok, Jason.encode!([])}
+              end
+          end
       end
     end)
     |> normalize()
+  end
+
+  defp cmd_recommend(_session, _opts),
+    do:
+      {:error,
+       "holo: recommend requires --checkpoint <export_dir> (a trained FuXi-Linear " <>
+         "checkpoint; the training-free HRR recommender was removed)", 2}
+
+  # Map a session of item ids to model indices; {:missing, ids} if any are unknown.
+  defp map_session(session, index_of) do
+    {found, missing} =
+      Enum.reduce(session, {[], []}, fn id, {f, m} ->
+        case Map.fetch(index_of, id) do
+          {:ok, idx} -> {[idx | f], m}
+          :error -> {f, [id | m]}
+        end
+      end)
+
+    case missing do
+      [] -> {:ok, Enum.reverse(found)}
+      _ -> {:missing, Enum.reverse(missing)}
+    end
   end
 
   defp cmd_items(_rest, opts) do
@@ -253,10 +290,10 @@ defmodule Holo.Adapters.CLI do
         end
       end)
 
-    if :error in tokens or not Memory.valid_id?(tokens) do
+    if :error in tokens or not ResidualFSQ.valid_id?(tokens) do
       {:error,
-       "holo: semantic ID must be #{Memory.tokens_per_item()} integers in " <>
-         "0..#{Memory.codebook_size() - 1}, got: #{inspect(strings)}", 2}
+       "holo: semantic ID must be #{ResidualFSQ.tokens_per_item()} integers in " <>
+         "0..#{ResidualFSQ.codebook_size() - 1}, got: #{inspect(strings)}", 2}
     else
       {:ok, tokens}
     end
@@ -273,10 +310,10 @@ defmodule Holo.Adapters.CLI do
           end)
 
         if :error in entries or
-             Enum.any?(entries, fn {_id, tokens} -> not Memory.valid_id?(tokens) end) do
+             Enum.any?(entries, fn {_id, tokens} -> not ResidualFSQ.valid_id?(tokens) end) do
           {:error,
            ~s(holo: --json expects [{"item_id": "...", "semantic_id": [t0,t1,t2,t3]}, ...] ) <>
-             "with tokens in 0..#{Memory.codebook_size() - 1}", 2}
+             "with tokens in 0..#{ResidualFSQ.codebook_size() - 1}", 2}
         else
           {:ok, entries}
         end
@@ -294,8 +331,8 @@ defmodule Holo.Adapters.CLI do
       holo add <item_id> <t0> <t1> <t2> <t3>       store an item's semantic ID
       holo add --json                          bulk add from stdin
       holo observe <id> <id> [...]             record a session's transitions
-      holo recommend <id> [...] [--top-k N]    next-item recall (JSON)
-                     [--include-seen]
+      holo recommend <id> [...] [--top-k N]    next-item recall (JSON);
+                     --checkpoint <dir>        FuXi-Linear model over the catalog
       holo items [--limit N]                   list stored items (JSON)
       holo blob put <name> <file>              chunk + store a file (dedup)
       holo blob get <name> <out>               reassemble a stored blob
@@ -308,7 +345,7 @@ defmodule Holo.Adapters.CLI do
       --port N         embedded SQL port (default 26257)
       --s3-port N      embedded S3 gateway port (default 7070)
       --db-url URL     use an external cockroach/postgres
-      --dim N          HRR dimensionality (default #{HRR.default_dim()})
+      --checkpoint DIR npy export of trained FuXi-Linear params (recommend)
     """
     |> String.trim_trailing()
   end

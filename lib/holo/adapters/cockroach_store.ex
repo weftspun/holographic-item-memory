@@ -21,7 +21,7 @@ defmodule Holo.Adapters.CockroachStore do
 
   Schema — items are semantic IDs, transitions the hetero-associative counts:
 
-      items(item_id STRING PRIMARY KEY, t0 INT, t1 INT, t2 INT)
+      items(item_id STRING PRIMARY KEY, t0 INT, t1 INT, t2 INT, t3 INT)
       transitions(prev STRING, next STRING, n INT, PRIMARY KEY (prev, next))
   """
 
@@ -100,11 +100,11 @@ defmodule Holo.Adapters.CockroachStore do
   @behaviour Holo.Ports.ItemSource
 
   @impl Holo.Ports.ItemSink
-  def upsert_item(conn, item_id, [t0, t1, t2]) do
+  def upsert_item(conn, item_id, [t0, t1, t2, t3]) do
     Postgrex.query!(
       conn,
-      "UPSERT INTO items (item_id, t0, t1, t2) VALUES ($1, $2, $3, $4)",
-      [item_id, t0, t1, t2]
+      "UPSERT INTO items (item_id, t0, t1, t2, t3) VALUES ($1, $2, $3, $4, $5)",
+      [item_id, t0, t1, t2, t3]
     )
 
     :ok
@@ -126,10 +126,10 @@ defmodule Holo.Adapters.CockroachStore do
 
   @impl Holo.Ports.ItemSource
   def list_items(conn, limit) do
-    sql = "SELECT item_id, t0, t1, t2 FROM items ORDER BY item_id" <> limit_clause(limit)
+    sql = "SELECT item_id, t0, t1, t2, t3 FROM items ORDER BY item_id" <> limit_clause(limit)
 
-    for [id, t0, t1, t2] <- Postgrex.query!(conn, sql, []).rows do
-      {id, [t0, t1, t2]}
+    for [id, t0, t1, t2, t3] <- Postgrex.query!(conn, sql, []).rows do
+      {id, [t0, t1, t2, t3]}
     end
   end
 
@@ -314,7 +314,7 @@ defmodule Holo.Adapters.CockroachStore do
       """
       CREATE TABLE IF NOT EXISTS items (
         item_id STRING PRIMARY KEY,
-        t0 INT NOT NULL, t1 INT NOT NULL, t2 INT NOT NULL
+        t0 INT NOT NULL, t1 INT NOT NULL, t2 INT NOT NULL, t3 INT NOT NULL
       )
       """,
       []

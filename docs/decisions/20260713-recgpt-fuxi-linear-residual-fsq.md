@@ -1,6 +1,11 @@
 # Switch the recommender to RecGPT / FuXi-Linear over Residual FSQ semantic IDs
 
-**Status:** Accepted · 2026-07-13 · **Supersedes the recommender core of** [Holographic HRR sequential recall](../sequential-recall.md) (kept as the training-free baseline)
+**Status:** Superseded (2026-07-14) by [Drop the HRR baseline; ship the pure FuXi-Linear generative recommender](20260714-drop-hrr-baseline-pure-fuxi-linear.md) · Accepted 2026-07-13 · **Supersedes the recommender core of** [Holographic HRR sequential recall](../sequential-recall.md)
+
+> **Superseded:** this ADR kept `Holo.Core.Memory` (HRR) as the training-free baseline. The
+> [2026-07-14 decision](20260714-drop-hrr-baseline-pure-fuxi-linear.md) removes HRR entirely and
+> ships FuXi-Linear as the sole recommender. The residual-FSQ substrate and 4-token contract below
+> still hold.
 
 ## Context and problem statement
 
