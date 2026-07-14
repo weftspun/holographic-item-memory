@@ -26,8 +26,8 @@ TWO_PI = 2.0 * math.pi
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ML = os.path.join(ROOT, "scratch_ml", "ml-100k")
 
-DIM = 4096
-N_BUCKETS = 128          # >= ceil(4L/dim); keeps each bank under ~dim/4 traces
+DIM = int(os.environ.get("HOLO_DIM", 4096))
+N_BUCKETS = int(os.environ.get("HOLO_BUCKETS", 2048))  # ~1/source: collision-free banks
 K = 10                   # top-K cutoff for all metrics
 N_NEG = 100              # sampled negatives per user (target ranked among 1+100)
 SEED = 20260713          # deterministic negative sampling
@@ -79,15 +79,36 @@ def assert_golden():
 
 
 # ── data ────────────────────────────────────────────────────────────────────
+STOPWORDS = {"the", "a", "an", "of", "and", "in", "to", "part"}
+
+
 def load_items():
-    """movie_id (1-based) -> list of active genre indices (0..18)."""
-    genres = {}
+    """movie_id (1-based) -> content atom words: genres, year, title tokens.
+
+    Textual features (RecGPT-style) rather than an opaque id alone — this is
+    the only source of content generalization in a pure-HRR setup, so richer
+    text = a stronger content signal.
+    """
+    feats = {}
     with open(os.path.join(ML, "u.item"), "rb") as fh:
         for line in fh:
             f = line.decode("latin-1").rstrip("\n").split("|")
             mid = int(f[0])
-            genres[mid] = [k for k, flag in enumerate(f[5:24]) if flag == "1"]
-    return genres
+            words = [f"genre:{k}" for k, flag in enumerate(f[5:24]) if flag == "1"]
+            title = f[1]
+            if title.endswith(")") and "(" in title:  # trailing "(YYYY)"
+                head, year = title.rsplit("(", 1)
+                year = year.rstrip(")")
+                if year[:4].isdigit():
+                    words.append(f"year:{year[:4]}")
+                    words.append(f"decade:{year[:3]}0s")
+                title = head
+            for tok in title.lower().replace(",", " ").replace(":", " ").split():
+                tok = tok.strip(".!?;\"'()[]{}")
+                if len(tok) > 1 and tok not in STOPWORDS:
+                    words.append(f"tok:{tok}")
+            feats[mid] = words
+    return feats
 
 
 def load_sequences():
@@ -100,12 +121,12 @@ def load_sequences():
     return {u: [i for _ts, i in sorted(rows)] for u, rows in by_user.items()}
 
 
-def item_vectors(genres, n_items):
-    """(n_items, DIM): bundle of the id atom + one atom per active genre."""
+def item_vectors(feats, n_items):
+    """(n_items, DIM): bundle of the id atom + one atom per content feature word."""
     V = np.empty((n_items, DIM), dtype=np.float64)
     for mid in range(1, n_items + 1):
         atoms = [encode_atom(f"item:{mid}")]
-        atoms += [encode_atom(f"genre:{k}") for k in genres.get(mid, [])]
+        atoms += [encode_atom(w) for w in feats.get(mid, [])]
         V[mid - 1] = bundle(np.stack(atoms))
     return V
 
@@ -218,12 +239,12 @@ def evaluate(scores, candidates):
 
 def main():
     assert_golden()
-    genres = load_items()
+    feats = load_items()
     seqs = load_sequences()
     n_items = max(max(s) for s in seqs.values())
-    print(f"users: {len(seqs)}   movies: {n_items}\n")
+    print(f"users: {len(seqs)}   movies: {n_items}   dim: {DIM}   buckets: {N_BUCKETS}\n")
 
-    V = item_vectors(genres, n_items)
+    V = item_vectors(feats, n_items)
     configs, histories, target_idx = score_configs(V, seqs, n_items)
     candidates = sample_candidates(histories, target_idx, n_items)
     print(f"protocol: leave-one-out, target vs {N_NEG} sampled negatives\n")

@@ -116,7 +116,35 @@ keeps every bank under the trace wall, and each query touches one bank + a few-h
 roster instead of the full catalog. Dropping back to `dim = 1024` quadruples the bucket
 count (`M_max ≈ 256` ⟹ `B ≥ 391`).
 
-## 5. Scaling the search — resonator networks
+## 5. Empirical — MovieLens-100K (`scripts/ml_eval.py`)
+
+Leave-one-out, target vs 100 sampled negatives, `dim = 4096`, HRR primitives
+verified against `test/fixtures/hrr_golden.json`. Chance Recall@10 ≈ 9.9%.
+
+| config                | Recall@10 | MRR@10 | NDCG@10 |
+|-----------------------|-----------|--------|---------|
+| most-popular baseline | 31.81     | 12.62  | 17.08   |
+| HRR content-only      | 27.89     | 9.63   | 13.84   |
+| HRR transition-only   | **34.36** | **13.95** | **18.69** |
+| HRR combined 0.4/0.6  | 33.51     | 13.30  | 17.99   |
+
+Two levers raised the signal and both are pure HRR — no training, no dimension increase:
+
+1. **Collision-free source-bucketing** (`B = 128 → 2048`, ≈ one source per bank). Fewer
+   hash collisions ⟹ each `unbind` probe carries only its source's successors, not other
+   sources' noise. This alone moved transition-only from 17.5 → 34.4 Recall@10 and is what
+   lifts it past the popularity baseline.
+2. **RecGPT-style textual item features** — bundle `year / decade / title-token` atoms into
+   each item vector instead of an opaque id atom alone (RecGPT foundation models likewise
+   represent items by text, not ids). Content-only rose 18.9 → 27.9.
+
+Raising `dim` 4096 → 8192 barely moves the numbers (transition Recall 34.4 → 33.9): once
+per-bank SNR `√(dim/M_b)` clears the ~2 threshold, dimension saturates — interference, not
+dimension, was the bottleneck. The combined weighting (0.4/0.6) slightly *underperforms*
+transition-only here because content is now the weaker of the two signals on this dataset;
+tune the weights per corpus.
+
+## 6. Scaling the search — resonator networks
 
 When context is a *product* of factors (position ⊛ item ⊛ user, say) the key space is
 combinatorial and even a roster scan is too much. A **resonator network** (Frady, Kent,
