@@ -55,12 +55,6 @@ defmodule Recommender.Adapters.CockroachStore do
     CockroachLocal.run_foreground(local_opts(opts))
   end
 
-  @doc "Path to the cockroach binary (delegates to `CockroachLocal.bin/1`)."
-  @spec cockroach_bin() :: {:ok, String.t()} | {:error, String.t()}
-  def cockroach_bin do
-    CockroachLocal.bin(priv_app: :residual_fsq_recommender, bin_env: "RFR_COCKROACH_BIN")
-  end
-
   ## Item / transition persistence (Recommender.Ports.ItemSink / ItemSource)
 
   @behaviour Recommender.Ports.ItemSink
