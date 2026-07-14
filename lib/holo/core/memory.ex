@@ -31,7 +31,7 @@ defmodule Holo.Core.Memory do
 
   alias Holo.Core.HRR
 
-  defstruct dim: 1024,
+  defstruct dim: 4096,
             items: %{},
             tokens: %{},
             trans_sin: nil,

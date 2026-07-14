@@ -42,10 +42,10 @@ A single superposition of `M` traces has retrieval SNR ≈ `√(dim / M)`
 is its leading term). Recall degrades once SNR drops below ~2, i.e.
 
 ```
-M_max ≈ dim / 4          # dim=1024  ⟹  ~256 traces per bank
+M_max ≈ dim / 4          # dim=4096  ⟹  ~1024 traces per bank
 ```
 
-MovieLens-100K has 100 000 ratings → far more than 256 distinct transitions. Piling them
+MovieLens-100K has 100 000 ratings → far more than 1024 distinct transitions. Piling them
 into one bank `T` turns it to noise. **This is the "limit the items in each bucket" wall.**
 
 ## 3. Bucketing: bounded banks, targeted search
@@ -94,7 +94,7 @@ full coverage.
 Two facts pin the numbers:
 
 1. **Single-shot retrieval is exact** on the phase grid — `HoloModel.unbind_bind`
-   (`omega`, holds at the real 65536-per-component / 1024-dim scale). So *all* recall
+   (`omega`, holds at the real 65536-per-component / 4096-dim scale). So *all* recall
    error is superposition noise, nothing else.
 2. **Budgeted cleanup resolves iff the scan budget reaches the target.** The
    `plausible-witness-dag` ladder in `HoloModel` demonstrates this: `holoLevels` runs
@@ -111,9 +111,10 @@ to hold L total transitions with every probe above threshold:
 per-bucket cleanup budget:  |roster[b]|  (≈ L/B distinct successors)
 ```
 
-For MovieLens-100K at `dim = 1024`: `L ≤ 100 000` ⟹ `B ≥ 391` buckets keeps every bank
-under the 256-trace wall, and each query touches one bank + a few-hundred-item roster
-instead of the full catalog. Raising `dim` to 4096 cuts the bucket count 4× (`M_max ≈ 1024`).
+For MovieLens-100K at `dim = 4096`: `M_max ≈ 1024`, so `L ≤ 100 000` ⟹ `B ≥ 98` buckets
+keeps every bank under the trace wall, and each query touches one bank + a few-hundred-item
+roster instead of the full catalog. Dropping back to `dim = 1024` quadruples the bucket
+count (`M_max ≈ 256` ⟹ `B ≥ 391`).
 
 ## 5. Scaling the search — resonator networks
 

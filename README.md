@@ -53,7 +53,7 @@ coarse-to-fine structure becomes vector similarity. Two recall signals combine i
 ```elixir
 # pairs from wherever you read asset_semantic_id.parquet: {item_id, [t0, t1, t2]}
 mem =
-  Holo.Core.Memory.new(dim: 1024)
+  Holo.Core.Memory.new(dim: 4096)
   |> Holo.Core.Memory.add_items([
     {"sword-01", [17, 900, 3]},
     {"shield-03", [17, 901, 44]},

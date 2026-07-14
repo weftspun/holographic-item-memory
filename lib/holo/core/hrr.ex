@@ -22,7 +22,7 @@ defmodule Holo.Core.HRR do
   """
 
   @two_pi 2.0 * :math.pi()
-  @default_dim 1024
+  @default_dim 4096
   @empty_atom "__hrr_empty__"
 
   @doc "Default vector dimensionality."

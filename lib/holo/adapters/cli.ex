@@ -29,7 +29,7 @@ defmodule Holo.Adapters.CLI do
       --s3-port N       embedded versitygw S3 port (default 7070)
       --db-url URL      connect to an external cockroach/postgres instead of
                         starting the embedded node
-      --dim N           HRR vector dimensionality (default 1024)
+      --dim N           HRR vector dimensionality (default #{Holo.Core.HRR.default_dim()})
 
   ## Structure
 
@@ -44,6 +44,7 @@ defmodule Holo.Adapters.CLI do
 
   alias Holo.Adapters.CockroachStore, as: Store
   alias Holo.Adapters.VersityBlobStore, as: Blob
+  alias Holo.Core.HRR
   alias Holo.Core.Memory
   alias Holo.Ports.ItemSource
 
@@ -163,7 +164,7 @@ defmodule Holo.Adapters.CLI do
 
   defp cmd_recommend(session, opts) do
     Store.with_db(store_opts(opts), fn conn ->
-      mem = ItemSource.load_memory(Store, conn, dim: opts[:dim] || 1024)
+      mem = ItemSource.load_memory(Store, conn, dim: opts[:dim] || HRR.default_dim())
 
       case Memory.recommend(mem, session,
              top_k: opts[:top_k] || 5,
@@ -306,7 +307,7 @@ defmodule Holo.Adapters.CLI do
       --port N         embedded SQL port (default 26257)
       --s3-port N      embedded S3 gateway port (default 7070)
       --db-url URL     use an external cockroach/postgres
-      --dim N          HRR dimensionality (default 1024)
+      --dim N          HRR dimensionality (default #{HRR.default_dim()})
     """
     |> String.trim_trailing()
   end

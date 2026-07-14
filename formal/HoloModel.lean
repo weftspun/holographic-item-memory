@@ -104,7 +104,7 @@ theorem bind_comm (a b : Nat) : bindG a b = bindG b a := by
 
 /-! ## Cleanup transition recall as a plausible-witness-dag witness -/
 
-/-- Component count of the toy phase vectors (real vectors are 1024-dim; the
+/-- Component count of the toy phase vectors (real vectors are 4096-dim; the
     algebraic facts are per-component, so 4 components lose no generality). -/
 def vecDim : Nat := 4
 

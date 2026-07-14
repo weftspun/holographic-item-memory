@@ -31,7 +31,7 @@ defmodule Holo do
   ## Quick start (library, no services)
 
       mem =
-        Holo.Core.Memory.new(dim: 1024)
+        Holo.Core.Memory.new(dim: 4096)
         |> Holo.Core.Memory.add_items([{"sword", [17, 900, 3]}, {"shield", [17, 901, 44]}])
 
       {:ok, recs} = Holo.Core.Memory.recommend(mem, ["sword"], top_k: 5)
