@@ -21,6 +21,6 @@
    "inputRev": "v4.30.0",
    "inherited": true,
    "configFile": "lakefile.toml"}],
- "name": "«holo-memory-model»",
+ "name": "«recommender-model»",
  "lakeDir": ".lake",
  "fixedToolchain": false}

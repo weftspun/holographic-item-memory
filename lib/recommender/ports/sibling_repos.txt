@@ -1,0 +1,13 @@
+# Cluster wiring (20260610-hexagonal-core-ports-adapters):
+# siblings this component's adapters bind to, message contract only — no shared code.
+#
+# driven / item_source + item_sink  -> https://github.com/V-Sekai/cockroach
+#   (embedded single-node, PostgreSQL wire protocol, bundled per-target by
+#    Recommender.Release.CockroachStep)
+# driven / blob_source + blob_sink  -> https://github.com/versity/versitygw
+#   (embedded S3 gateway over <data-dir>/blobs, bundled per-target)
+# driven / blob chunking            -> https://github.com/V-Sekai-fire/aria-storage
+#   (in-process dep: casync-style content-defined chunker; chunk id = SHA-512/256)
+# driving / semantic-ID producer    -> https://github.com/weftspun/multimodal-semantic-ids
+#   (upstream Python pipeline; contract = 3 ResidualFSQ tokens in 0..4095 per item,
+#    certified in formal/RecommenderModel.lean)
