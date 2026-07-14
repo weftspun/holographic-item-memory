@@ -1,10 +1,10 @@
-defmodule Holo.HRRTest do
+defmodule Holo.Core.HRRTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias Holo.HRR
+  alias Holo.Core.HRR
 
-  @golden Path.join(__DIR__, "../fixtures/hrr_golden.json")
+  @golden Path.join(__DIR__, "../../fixtures/hrr_golden.json")
           |> File.read!()
           |> Jason.decode!()
 

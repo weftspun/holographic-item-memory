@@ -1,7 +1,8 @@
-defmodule Holo.MemoryTest do
+defmodule Holo.Core.MemoryTest do
   use ExUnit.Case, async: true
 
-  alias Holo.Memory
+  alias Holo.Core.HRR
+  alias Holo.Core.Memory
 
   # Deterministic pseudo-random catalog: 40 items with distinct semantic IDs.
   defp catalog do
@@ -12,6 +13,43 @@ defmodule Holo.MemoryTest do
 
   defp loaded_memory(dim \\ 1024) do
     Memory.new(dim: dim) |> Memory.add_items(catalog())
+  end
+
+  describe "semantic IDs" do
+    test "contract constants match the multimodal-semantic-ids decision record" do
+      assert Memory.tokens_per_item() == 3
+      assert Memory.codebook_size() == 4096
+    end
+
+    test "valid_id?" do
+      assert Memory.valid_id?([0, 4095, 17])
+      refute Memory.valid_id?([0, 4096, 17])
+      refute Memory.valid_id?([0, 17])
+      refute Memory.valid_id?([0, 1, -1])
+      refute Memory.valid_id?(nil)
+    end
+
+    test "item_vector is deterministic" do
+      a = Memory.item_vector([17, 900, 3], 256)
+      b = Memory.item_vector([17, 900, 3], 256)
+      assert Nx.equal(a, b) |> Nx.all() |> Nx.to_number() == 1
+    end
+
+    test "item_vector rejects invalid ids" do
+      assert_raise ArgumentError, fn -> Memory.item_vector([1, 2], 64) end
+      assert_raise ArgumentError, fn -> Memory.item_vector([1, 2, 4096], 64) end
+    end
+
+    test "items sharing semantic-id tokens are more similar than disjoint items" do
+      dim = 1024
+      base = Memory.item_vector([17, 900, 3], dim)
+      near = Memory.item_vector([17, 900, 44], dim)
+      far = Memory.item_vector([2000, 31, 999], dim)
+
+      assert HRR.similarity(base, near) > HRR.similarity(base, far)
+      assert HRR.similarity(base, near) > 0.2
+      assert abs(HRR.similarity(base, far)) < 0.15
+    end
   end
 
   test "add_items / size" do

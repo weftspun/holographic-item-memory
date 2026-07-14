@@ -20,5 +20,8 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-holographic_semantic_memory-*.tar
+holographic_item_memory-*.tar
 
+
+# Burrito build output
+/burrito_out/

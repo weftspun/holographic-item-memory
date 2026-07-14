@@ -1,15 +1,18 @@
 import PlausibleWitnessDag
 
-/-! # Formal model of the holographic-semantic-memory core (as shipped in this repo)
+/-! # Formal model of the holographic-semantic-memory core
 
-Models the three pieces of `lib/holo/` that recall must get exactly right, at the **real** scale:
+Models what recall must get exactly right, at the **real** scale:
 
-* **ResidualFSQ semantic-ID codec** — `lib/holo/residual_fsq.ex`. `codes_to_index` maps one stage's
-  4 FSQ digits `(c0,c1,c2,c3)` with `levels = [8,8,8,8]` to a token index via the basis
-  `[1,8,64,512]`: `index = c0 + 8·c1 + 64·c2 + 512·c3`, vocabulary `4096` per stage. An item's ID is
-  3 stage tokens; `Holo.SemanticID.flat_key` packs them base-4096. Proved by `omega` (symbolic — no
-  enumeration — so the facts hold at the real 4096-code / 4096³-key scale): bound, digit round-trip,
-  stage injectivity, and item-key injectivity (no two distinct semantic IDs collide).
+* **ResidualFSQ semantic-ID codec (upstream contract)** — the `multimodal-semantic-ids` Python
+  pipeline that produces the IDs this library consumes (`Holo.Memory` validates 3 tokens in
+  `0..4095`). `codes_to_index` maps one stage's 4 FSQ digits `(c0,c1,c2,c3)` with
+  `levels = [8,8,8,8]` to a token index via the basis `[1,8,64,512]`:
+  `index = c0 + 8·c1 + 64·c2 + 512·c3`, vocabulary `4096` per stage; an item's ID is 3 stage
+  tokens, packable base-4096. There is deliberately no Elixir mirror of this codec — these
+  theorems certify the ID *format* the whole system rests on. Proved by `omega` (symbolic — no
+  enumeration — so the facts hold at the real 4096-code / 4096³-key scale): bound, digit
+  round-trip, stage injectivity, and item-key injectivity (no two distinct semantic IDs collide).
 
 * **HRR phase algebra on the generation grid** — `lib/holo/hrr.ex`. Atoms are SHA-256 uint16 values
   scaled by `2π/65536`, so the algebra lives on the grid `ℤ/65536` per component: `bind` is addition,
@@ -27,16 +30,16 @@ namespace HoloModel
 
 open PlausibleWitnessDag
 
-/-! ## ResidualFSQ index codec (`lib/holo/residual_fsq.ex`) -/
+/-! ## ResidualFSQ index codec (upstream `multimodal-semantic-ids` contract) -/
 
-/-- Codes per stage `= 8^4` (`Holo.ResidualFSQ.codebook_size`). -/
+/-- Codes per stage `= 8^4` (`Holo.Memory.codebook_size`). -/
 def codebook : Nat := 4096
 
-/-- Residual quantizer stages = tokens per item (`Holo.ResidualFSQ.num_quantizers`). -/
+/-- Residual quantizer stages = tokens per item (`Holo.Memory.tokens_per_item`). -/
 def numQuantizers : Nat := 3
 
 /-- Mixed-radix token index for one stage's digits, basis `[1,8,64,512]`
-    (`Holo.ResidualFSQ.codes_to_index`). -/
+    (upstream `ResidualFSQ` stage indexing). -/
 def stageIndex (c0 c1 c2 c3 : Nat) : Nat :=
   c0 + c1 * 8 + c2 * 64 + c3 * 512
 
@@ -63,7 +66,7 @@ theorem stage_injective (c0 c1 c2 c3 d0 d1 d2 d3 : Nat)
     c0 = d0 ∧ c1 = d1 ∧ c2 = d2 ∧ c3 = d3 := by
   unfold stageIndex at h; omega
 
-/-- Flat item key: 3 stage tokens packed base-4096 (`Holo.SemanticID.flat_key`). -/
+/-- Flat item key: 3 stage tokens packed base-4096. -/
 def itemKey (t0 t1 t2 : Nat) : Nat :=
   t0 + t1 * 4096 + t2 * 4096 * 4096
 

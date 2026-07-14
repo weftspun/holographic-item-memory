@@ -1,4 +1,4 @@
-defmodule Holo.HRR do
+defmodule Holo.Core.HRR do
   @moduledoc """
   Holographic Reduced Representations (HRR) with phase encoding.
 

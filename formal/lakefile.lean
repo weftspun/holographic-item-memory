@@ -2,9 +2,9 @@ import Lake
 open Lake DSL
 
 -- SPDX-License-Identifier: MIT
--- Formal model of the holographic-semantic-memory core that ships in this repo:
---   * ResidualFSQ semantic-ID index codec (lib/holo/residual_fsq.ex:
---     codes_to_index / index_to_codes; flat item key in lib/holo/semantic_id.ex)
+-- Formal model of the holographic-semantic-memory core:
+--   * ResidualFSQ semantic-ID index codec (upstream multimodal-semantic-ids
+--     contract; Holo.Memory validates/consumes the 3-token IDs)
 --   * HRR phase algebra on the uint16 grid (lib/holo/hrr.ex: bind / unbind)
 --   * cleanup (nearest-item) recall as a budgeted witness walk (lib/holo/memory.ex)
 -- Built on fire/plausible-witness-dag.
