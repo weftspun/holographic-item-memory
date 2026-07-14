@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "holographic-item-memory"
+title: "residual-fsq-recommender"
 abstract: >-
   Sequential next-item recommendation in Elixir using only Holographic
   Reduced Representation (HRR) phase-vector primitives — bind, unbind,
@@ -15,7 +15,7 @@ authors:
     given-names: "K. S. Ernest"
     alias: iFire
     email: ernest.lee@chibifire.com
-repository-code: "https://github.com/weftspun/holographic-item-memory"
+repository-code: "https://github.com/weftspun/residual-fsq-recommender"
 license: MIT
 version: 0.2.0
 keywords:

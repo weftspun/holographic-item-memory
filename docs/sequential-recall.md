@@ -1,7 +1,7 @@
 # Sequential recommendation with HRR primitives only
 
 No ResidualFSQ, no neural network, no training. Everything below is built from the
-four `Holo.Core.HRR` operations — `bind` (phase add), `unbind` (phase subtract),
+four `Recommender.Core.HRR` operations — `bind` (phase add), `unbind` (phase subtract),
 `bundle` (circular mean), `similarity` (phase cosine) — plus one order primitive,
 `permute` (a fixed cyclic shift `ρ`), which is the standard VSA way to make binding
 non-commutative and thus position-aware (Gayler 2003; Kanerva 2009).
@@ -25,8 +25,8 @@ atoms (same id, shared text tokens, shared entities) score high. This is what
 A first-order successor memory. For an observed step `a → b` store the trace
 `bind(vec a, vec b)`. Recall unbinds the last item: `unbind(T, vec xₜ) ≈ vec x_{t+1}`,
 then a cleanup scan ranks catalog atoms against that noisy estimate. `unbind(bind a b) b = a`
-is **exact on the SHA uint16 phase grid** — proved by `omega` as `HoloModel.unbind_bind`
-in `formal/HoloModel.lean`; the f64 path adds only representation noise.
+is **exact on the SHA uint16 phase grid** — proved by `omega` as `RecommenderModel.unbind_bind`
+in `formal/RecommenderModel.lean`; the f64 path adds only representation noise.
 
 Order beyond the immediate predecessor comes from the trajectory encoding
 (Plate 2003): a windowed context vector
@@ -93,11 +93,11 @@ full coverage.
 
 Two facts pin the numbers:
 
-1. **Single-shot retrieval is exact** on the phase grid — `HoloModel.unbind_bind`
+1. **Single-shot retrieval is exact** on the phase grid — `RecommenderModel.unbind_bind`
    (`omega`, holds at the real 65536-per-component / 4096-dim scale). So *all* recall
    error is superposition noise, nothing else.
 2. **Budgeted cleanup resolves iff the scan budget reaches the target.** The
-   `plausible-witness-dag` ladder in `HoloModel` demonstrates this: `holoLevels` runs
+   `plausible-witness-dag` ladder in `RecommenderModel` demonstrates this: `holoLevels` runs
    `walkSteps = 2` (budget below the successor's position → **budget-hit**) then
    `walkSteps = 4` = full roster → **resolves** item 3 at L1. Translated to buckets: a
    query's cleanup budget need only cover `|roster[b]|`, not `N`. Bucketing is what makes
@@ -134,8 +134,8 @@ Two levers raised the signal and both are pure HRR — no training, no dimension
    hash collisions ⟹ each `unbind` probe carries only its source's successors, not other
    sources' noise. This alone moved transition-only from 17.5 → 34.4 Recall@10 and is what
    lifts it past the popularity baseline.
-2. **RecGPT-style textual item features** — bundle `year / decade / title-token` atoms into
-   each item vector instead of an opaque id atom alone (RecGPT foundation models likewise
+2. **generative textual item features** — bundle `year / decade / title-token` atoms into
+   each item vector instead of an opaque id atom alone (generative foundation models likewise
    represent items by text, not ids). Content-only rose 18.9 → 27.9.
 
 Raising `dim` 4096 → 8192 barely moves the numbers (transition Recall 34.4 → 33.9): once
