@@ -1,0 +1,173 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "holographic-item-memory"
+abstract: >-
+  Sequential next-item recommendation in Elixir using only Holographic
+  Reduced Representation (HRR) phase-vector primitives — bind, unbind,
+  bundle, similarity. Item vectors are SHA-256-deterministic phase atoms;
+  a session is recalled from a bucketed hetero-associative transition
+  memory whose per-bucket superposition load is kept below the VSA
+  capacity bound. The phase algebra and cleanup-recall bounds are
+  certified in Lean 4 via fire/plausible-witness-dag.
+type: software
+authors:
+  - family-names: Lee
+    given-names: "K. S. Ernest"
+    alias: iFire
+    email: ernest.lee@chibifire.com
+repository-code: "https://github.com/weftspun/holographic-item-memory"
+license: MIT
+version: 0.2.0
+keywords:
+  - holographic reduced representations
+  - vector symbolic architecture
+  - hyperdimensional computing
+  - sequential recommendation
+  - hetero-associative memory
+  - Elixir
+  - Lean 4
+references:
+  - type: article
+    title: "Holographic Reduced Representations"
+    authors:
+      - family-names: Plate
+        given-names: "Tony A."
+    journal: "IEEE Transactions on Neural Networks"
+    volume: 6
+    issue: 3
+    start: 623
+    end: 641
+    year: 1995
+    doi: "10.1109/72.377968"
+    notes: >-
+      Circular-convolution binding, superposition, and cleanup memory; the
+      original capacity analysis this library's transition bank relies on.
+  - type: book
+    title: >-
+      Holographic Reduced Representation: Distributed Representation for
+      Cognitive Structures
+    authors:
+      - family-names: Plate
+        given-names: "Tony A."
+    publisher:
+      name: "CSLI Publications"
+    year: 2003
+    isbn: "978-1575864303"
+    notes: "Trajectory association — encoding ordered sequences in a single HRR vector."
+  - type: conference-paper
+    title: "Vector Symbolic Architectures answer Jackendoff's challenges for cognitive neuroscience"
+    authors:
+      - family-names: Gayler
+        given-names: "Ross W."
+    year: 2003
+    collection-title: "Proceedings of the ICCS/ASCS International Conference on Cognitive Science"
+    notes: "Coins 'Vector Symbolic Architecture'; frames binding/bundling/permutation as the VSA algebra."
+  - type: article
+    title: "Hyperdimensional Computing: An Introduction to Computing in Distributed Representation with High-Dimensional Random Vectors"
+    authors:
+      - family-names: Kanerva
+        given-names: Pentti
+    journal: "Cognitive Computation"
+    volume: 1
+    issue: 2
+    start: 139
+    end: 159
+    year: 2009
+    doi: "10.1007/s12559-009-9009-8"
+  - type: article
+    title: "A Theory of Sequence Indexing and Working Memory in Recurrent Neural Networks"
+    authors:
+      - family-names: Frady
+        given-names: "E. Paxon"
+      - family-names: Kleyko
+        given-names: Denis
+      - family-names: Sommer
+        given-names: "Friedrich T."
+    journal: "Neural Computation"
+    volume: 30
+    issue: 6
+    start: 1449
+    end: 1513
+    year: 2018
+    doi: "10.1162/neco_a_01084"
+    notes: >-
+      The capacity bound used to size buckets: accuracy of retrieval from a
+      superposition of M items in dimension D is governed by SNR ~ sqrt(D/M).
+  - type: article
+    title: >-
+      Resonator Networks, 1: An Efficient Solution for Factoring
+      High-Dimensional, Distributed Representations of Data Structures
+    authors:
+      - family-names: Frady
+        given-names: "E. Paxon"
+      - family-names: Kent
+        given-names: "Spencer J."
+      - family-names: Olshausen
+        given-names: "Bruno A."
+      - family-names: Sommer
+        given-names: "Friedrich T."
+    journal: "Neural Computation"
+    volume: 32
+    issue: 12
+    start: 2311
+    end: 2331
+    year: 2020
+    doi: "10.1162/neco_a_01331"
+    notes: "Searching in superposition — decoding a bound factorization without enumerating the key space."
+  - type: article
+    title: >-
+      Resonator Networks, 2: Factorization Performance and Capacity Compared
+      to Optimization-Based Methods
+    authors:
+      - family-names: Kent
+        given-names: "Spencer J."
+      - family-names: Frady
+        given-names: "E. Paxon"
+      - family-names: Sommer
+        given-names: "Friedrich T."
+      - family-names: Olshausen
+        given-names: "Bruno A."
+    journal: "Neural Computation"
+    volume: 32
+    issue: 12
+    start: 2332
+    end: 2388
+    year: 2020
+    doi: "10.1162/neco_a_01329"
+  - type: article
+    title: >-
+      A Survey on Hyperdimensional Computing aka Vector Symbolic
+      Architectures, Part I: Models and Data Transformations
+    authors:
+      - family-names: Kleyko
+        given-names: Denis
+      - family-names: Rachkovskij
+        given-names: "Dmitri A."
+      - family-names: Osipov
+        given-names: Evgeny
+      - family-names: Rahimi
+        given-names: Abbas
+    journal: "ACM Computing Surveys"
+    volume: 55
+    issue: 6
+    start: 1
+    end: 40
+    year: 2022
+    doi: "10.1145/3538531"
+  - type: article
+    title: "Sequence-Aware Recommender Systems"
+    authors:
+      - family-names: Quadrana
+        given-names: Massimo
+      - family-names: Cremonesi
+        given-names: Paolo
+      - family-names: Jannach
+        given-names: Dietmar
+    journal: "ACM Computing Surveys"
+    volume: 51
+    issue: 4
+    start: 1
+    end: 36
+    year: 2018
+    doi: "10.1145/3190616"
+    notes: "Task framing: predict the next item in a session; the target this HRR memory emulates."
