@@ -77,12 +77,11 @@ defmodule Holo.MixProject do
       {:req, "~> 0.5"},
       {:explorer, "~> 0.11"},
       {:postgrex, "~> 0.19"},
-      # Local database / object-storage hosts, extracted to their own repos
-      # (../cockroach_local, ../versitygw_local). Uncomment once pushed to
-      # weftspun, then refactor CockroachStore / VersityBlobStore to delegate
-      # their host lifecycle (provision + start/stop) to these.
-      # {:cockroach_local, github: "weftspun/cockroach_local"},
-      # {:versitygw_local, github: "weftspun/versitygw_local"},
+      # Local database / object-storage hosts, extracted to their own repos.
+      # CockroachStore / VersityBlobStore still carry their own host lifecycle;
+      # delegating provision + start/stop to these is a follow-up.
+      {:cockroach_local, github: "weftspun/cockroach-local"},
+      {:versitygw_local, github: "weftspun/versitygw-local"},
       {:aria_storage, github: "V-Sekai-fire/aria-storage"},
       {:ex_aws, "~> 2.4"},
       {:ex_aws_s3, "~> 2.4"},
