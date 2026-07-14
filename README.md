@@ -1,45 +1,7 @@
 # residual-fsq-recommender
 
-Generative next-item recommender (**FuXi-Linear** linear-attention) over **residual FSQ semantic
-IDs**, in Elixir on [Nx](https://github.com/elixir-nx/nx)/EXLA. The ID codec is
-certified in Lean 4 via [`fire/plausible-witness-dag`](https://github.com/fire/plausible-witness-dag).
-
-Each item is a 4-token semantic ID `[t0, t1, t2, t3]`, each token in `0..4095`, produced by a
-coarse-to-fine residual FSQ quantizer (`levels = [8,8,8,8]`, 4 stages). A linear-attention decoder
-predicts the next item's four tokens; a trie constrains decoding to real catalog IDs.
-
-## Layout (hexagonal — `core` / `ports` / `adapters`)
-
-- `Recommender.Core.FSQ` / `Recommender.Core.ResidualFSQ` — the residual FSQ codec: content
-  embeddings → 4-token IDs, plus the ID contract (`valid_id?/1`, `tokens_per_item/0`,
-  `codebook_size/0`) every consumer shares.
-- `Recommender.Core.FuxiLinearInference*` — the FuXi-Linear model (Retention + linear temporal /
-  positional channels + mFFN), O(n) in sequence length.
-- `Recommender.Core.{Decode,Trie,Training,Eval}` — trie-constrained beam / multi-token-prediction
-  decode, training losses (shifted cross-entropy + MTP), and Hit@k / MRR metrics.
-- `Recommender.Adapters.Serve` — wires the forward pass + constrained decode + catalog into
-  `recommend/3`.
-- `Recommender.Adapters.CockroachStore` / `VersityBlobStore` — embedded CockroachDB (items and
-  session transitions) and a Versity S3 blob store; the host lifecycles come from
-  [`weftspun/cockroach-local`](https://github.com/weftspun/cockroach-local) and
-  [`weftspun/versitygw-local`](https://github.com/weftspun/versitygw-local).
-- `Recommender.Adapters.CLI` — the standalone `rfr` binary.
-
-Coarse mass lands in `t0`, so similar items share ID prefixes; the decoder generates an ID prefix-first
-and the trie keeps every beam on a valid catalog path.
-
-## Semantic IDs
-
-`Recommender.Core.ResidualFSQ` tokenizes content embeddings without a trained checkpoint (a seeded
-projection makes it reproducible), or loads a trained projection from a checkpoint:
-
-```elixir
-ids = Recommender.Core.ResidualFSQ.encode_ids(embeddings)   # [[t0, t1, t2, t3], ...]
-true = Recommender.Core.ResidualFSQ.valid_id?(hd(ids))
-```
-
-The packing `itemKey [t0,t1,t2,t3] = t0 + t1·4096 + t2·4096² + t3·4096³` is injective over valid IDs
-(certified in Lean), so an ID maps to one catalog slot.
+Generative next-item recommender (FuXi-Linear linear-attention) over residual FSQ semantic
+IDs, in Elixir on [Nx](https://github.com/elixir-nx/nx)/EXLA.
 
 ## Serving
 
@@ -72,26 +34,3 @@ rfr db start                                   run the embedded CockroachDB
 
 Persistence goes through the driven ports; the standalone binary bundles the `cockroach` and
 `versitygw` single binaries per target.
-
-## Formal model (`formal/`)
-
-`RecommenderModel.lean` (built on `plausible-witness-dag`) certifies the ID codec by `omega` — symbolic,
-so it holds at the real 4096-code / 4096⁴-key scale: `stage_bound`, `stage_roundtrip`,
-`stage_injective`, and `itemKey_injective` (the stage index is a bijection onto `0..4095`, and distinct
-IDs never collide).
-
-```bash
-cd formal
-lake build
-```
-
-## Tests
-
-```bash
-mix deps.get
-mix test          # runs on EXLA (config/config.exs)
-```
-
-## License
-
-MIT — see [LICENSE.md](LICENSE.md).
