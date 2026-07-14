@@ -7,9 +7,9 @@ defmodule Holo.Adapters.CLI do
 
   ## Subcommands
 
-      holo add <item_id> <t0> <t1> <t2>       store an item's semantic ID
+      holo add <item_id> <t0> <t1> <t2> <t3>       store an item's semantic ID
       holo add --json                          bulk add from stdin:
-                                               [{"item_id": "...", "semantic_id": [t0,t1,t2]}, ...]
+                                               [{"item_id": "...", "semantic_id": [t0,t1,t2,t3]}, ...]
       holo observe <id> <id> [...]             record a session's transitions
       holo recommend <id> [...] [--top-k N]    next-item recall for a session (JSON)
                      [--include-seen]
@@ -134,8 +134,8 @@ defmodule Holo.Adapters.CLI do
     end
   end
 
-  defp cmd_add([item_id, t0, t1, t2], opts) do
-    with {:ok, tokens} <- parse_tokens([t0, t1, t2]) do
+  defp cmd_add([item_id, t0, t1, t2, t3], opts) do
+    with {:ok, tokens} <- parse_tokens([t0, t1, t2, t3]) do
       Store.with_db(store_opts(opts), fn conn ->
         :ok = Store.upsert_item(conn, item_id, tokens)
         {:ok, "added #{item_id} #{inspect(tokens)}"}
@@ -145,7 +145,8 @@ defmodule Holo.Adapters.CLI do
   end
 
   defp cmd_add(_, _opts),
-    do: {:error, "usage: holo add <item_id> <t0> <t1> <t2>  |  holo add --json < items.json", 2}
+    do:
+      {:error, "usage: holo add <item_id> <t0> <t1> <t2> <t3>  |  holo add --json < items.json", 2}
 
   defp cmd_observe(ids, opts) when length(ids) >= 2 do
     Store.with_db(store_opts(opts), fn conn ->
@@ -274,7 +275,7 @@ defmodule Holo.Adapters.CLI do
         if :error in entries or
              Enum.any?(entries, fn {_id, tokens} -> not Memory.valid_id?(tokens) end) do
           {:error,
-           ~s(holo: --json expects [{"item_id": "...", "semantic_id": [t0,t1,t2]}, ...] ) <>
+           ~s(holo: --json expects [{"item_id": "...", "semantic_id": [t0,t1,t2,t3]}, ...] ) <>
              "with tokens in 0..#{Memory.codebook_size() - 1}", 2}
         else
           {:ok, entries}
@@ -290,7 +291,7 @@ defmodule Holo.Adapters.CLI do
     holo #{@version} — holographic item memory over ResidualFSQ semantic IDs
 
     usage:
-      holo add <item_id> <t0> <t1> <t2>       store an item's semantic ID
+      holo add <item_id> <t0> <t1> <t2> <t3>       store an item's semantic ID
       holo add --json                          bulk add from stdin
       holo observe <id> <id> [...]             record a session's transitions
       holo recommend <id> [...] [--top-k N]    next-item recall (JSON)

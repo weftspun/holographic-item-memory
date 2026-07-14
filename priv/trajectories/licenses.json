@@ -1,0 +1,105 @@
+{
+  "_comment": "License + locale manifest for RecGPT trajectory training corpora. A dataset is INGESTIBLE only if it passes BOTH gates: (1) license on the permissive allowlist [CC0-1.0, MIT, Apache-2.0, CC-BY-4.0], and (2) english/Western locale (`english: true`). Holo.Core.Trajectories.LicenseGate enforces (1) as a hard gate with no override; allowed_datasets/0 additionally requires (2). Non-Western corpora (Alibaba/Taobao/AL-GR, Yandex Yambda, VK-LSVD) are excluded regardless of license. Verify a dataset's license AND locale before adding it here.",
+  "allowlist": ["CC0-1.0", "MIT", "Apache-2.0", "CC-BY-4.0"],
+  "datasets": [
+    {
+      "name": "open-ecommerce",
+      "title": "Open e-commerce 1.0 (Amazon purchases)",
+      "source": "https://github.com/ambermocalis/Amazon_Transactions",
+      "path": "open-ecommerce",
+      "spdx": "CC0-1.0",
+      "english": true,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "US/English, public-domain (CC0). Sequential corpus: user=`Survey ResponseID`, time=`Order Date`, item=`ASIN/ISBN`, text=`Title`/`Category`. PRIMARY gate-clean, English/Western training corpus."
+    },
+    {
+      "name": "otto",
+      "title": "OTTO Recommender Systems Dataset",
+      "source": "https://github.com/otto-de/recsys-dataset",
+      "path": null,
+      "spdx": "CC-BY-4.0",
+      "english": true,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "German/Western retailer (otto.de), CC-BY-4.0 (data; the repo CODE is MIT). 12M sessions / 220M events, anonymized integer aids (no foreign-language text). Gate-clean + Western. Not staged locally; downloadable scale option."
+    },
+    {
+      "name": "movielens-20m",
+      "title": "MovieLens 20M",
+      "source": "https://files.grouplens.org/datasets/movielens/ml-20m.zip",
+      "path": "movielens-20m",
+      "spdx": "LicenseRef-GroupLens",
+      "english": true,
+      "commercial_ok": false,
+      "redistribute_ok": false,
+      "note": "BLOCKED (license): GroupLens custom forbids redistribution/commercial use. English but license-blocked. Dev-local eval baseline only, never ingested or bundled."
+    },
+    {
+      "name": "merrec",
+      "title": "MerRec (Mercari US C2C recommendation)",
+      "source": "https://huggingface.co/datasets/mercari-us/merrec",
+      "path": "merrec",
+      "spdx": "CC-BY-NC-4.0",
+      "english": true,
+      "commercial_ok": false,
+      "redistribute_ok": true,
+      "note": "BLOCKED (license): CC-BY-NC is NonCommercial. (US/English, but license-blocked.)"
+    },
+    {
+      "name": "KuaiRand-Pure",
+      "title": "KuaiRand-Pure (Kuaishou)",
+      "source": "https://zenodo.org/records/10439422",
+      "path": "KuaiRand-Pure",
+      "spdx": "CC-BY-SA-4.0",
+      "english": false,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "BLOCKED: CC-BY-SA copyleft AND non-Western (Kuaishou, China)."
+    },
+    {
+      "name": "yambda",
+      "title": "Yambda-5B (Yandex Music)",
+      "source": "https://huggingface.co/datasets/yandex/yambda",
+      "path": null,
+      "spdx": "Apache-2.0",
+      "english": false,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "EXCLUDED (locale): Apache-2.0 (license-clean) but non-Western provider (Yandex, Russia). Data is language-neutral (integer IDs + audio embeddings); excluded per English/Western requirement."
+    },
+    {
+      "name": "al-gr",
+      "title": "AL-GR (Alibaba Generative Recommendation)",
+      "source": "https://huggingface.co/datasets/AL-GR/AL-GR",
+      "path": null,
+      "spdx": "Apache-2.0",
+      "english": false,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "EXCLUDED (locale): Apache-2.0 (license-clean) and uses 3-token generative-rec semantic IDs (this repo now uses 4-token IDs), but Chinese-language prompts / Alibaba e-commerce. Excluded per English/Western requirement."
+    },
+    {
+      "name": "taobao-mm",
+      "title": "Taobao-MM (Alibaba multimodal recommendation)",
+      "source": "https://huggingface.co/datasets/TaoBao-MM/Taobao-MM",
+      "path": null,
+      "spdx": "Apache-2.0",
+      "english": false,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "EXCLUDED (locale): Apache-2.0 (license-clean) but non-Western (Taobao/Alibaba, China)."
+    },
+    {
+      "name": "vk-lsvd",
+      "title": "VK-LSVD (VK Large Short Video Dataset)",
+      "source": "https://huggingface.co/datasets/deepvk/VK-LSVD",
+      "path": null,
+      "spdx": "Apache-2.0",
+      "english": false,
+      "commercial_ok": true,
+      "redistribute_ok": true,
+      "note": "EXCLUDED (locale): Apache-2.0 (license-clean) but non-Western (VK, Russia)."
+    }
+  ]
+}

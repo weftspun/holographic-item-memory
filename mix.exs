@@ -60,7 +60,21 @@ defmodule Holo.MixProject do
 
   defp deps do
     [
-      {:nx, "~> 0.11"},
+      {:nx, "~> 0.11", override: true},
+      # RecGPT / FuXi-Linear port: model runtime + checkpoint/data IO. The
+      # inference/training stack runs on EXLA (XLA JIT); config sets
+      # `:backend_app` to `:exla` and the default backend to `EXLA.Backend`.
+      # EXLA downloads a precompiled XLA archive (needs `make` + a C compiler,
+      # NOT cmake) — CPU by default; set `XLA_TARGET=cuda12x` for GPU. torchx is
+      # left out (its libtorch bindings need `cmake`, absent here).
+      {:exla, "~> 0.11"},
+      {:axon, "~> 0.7"},
+      {:bumblebee, github: "elixir-nx/bumblebee", ref: "main"},
+      {:npy, "~> 0.1.2"},
+      {:unpickler, "~> 0.1"},
+      {:unzip, "~> 0.13"},
+      {:nimble_csv, "~> 1.2"},
+      {:req, "~> 0.5"},
       {:explorer, "~> 0.11"},
       {:postgrex, "~> 0.19"},
       {:aria_storage, github: "V-Sekai-fire/aria-storage"},

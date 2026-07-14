@@ -43,8 +43,8 @@ defmodule Holo.Core.Memory do
   @type t :: %__MODULE__{}
 
   # The multimodal-semantic-ids ResidualFSQ contract:
-  # levels [8,8,8,8] (8^4 = 4096 codes per stage), num_quantizers 3.
-  @tokens_per_item 3
+  # levels [8,8,8,8] (8^4 = 4096 codes per stage), num_quantizers 4.
+  @tokens_per_item 4
   @codebook_size 4096
 
   @recent_window 8
@@ -57,7 +57,7 @@ defmodule Holo.Core.Memory do
   @doc "Codes per token (= `8^4`, the per-stage FSQ codebook)."
   def codebook_size, do: @codebook_size
 
-  @doc "True when `tokens` is a valid semantic ID (3 integers in `0..4095`)."
+  @doc "True when `tokens` is a valid semantic ID (4 integers in `0..4095`)."
   @spec valid_id?(term()) :: boolean()
   def valid_id?(tokens) do
     is_list(tokens) and length(tokens) == @tokens_per_item and
@@ -76,6 +76,7 @@ defmodule Holo.Core.Memory do
       bundle(bind(atom("sid:q0:t0"), ROLE_Q0),
              bind(atom("sid:q1:t1"), ROLE_Q1),
              bind(atom("sid:q2:t2"), ROLE_Q2),
+             bind(atom("sid:q3:t3"), ROLE_Q3),
              bind(encode_text(text), ROLE_CONTENT),   # when text given
              bind(atom(entity), ROLE_ENTITY), ...)    # per entity
 
