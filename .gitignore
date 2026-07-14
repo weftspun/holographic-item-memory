@@ -25,3 +25,6 @@ holographic_item_memory-*.tar
 
 # Burrito build output
 /burrito_out/
+
+# Scratch ML data (MovieLens 100K raw + generated Parquet)
+/scratch_ml/

@@ -61,6 +61,7 @@ defmodule Holo.MixProject do
   defp deps do
     [
       {:nx, "~> 0.11"},
+      {:explorer, "~> 0.11"},
       {:postgrex, "~> 0.19"},
       {:aria_storage, github: "V-Sekai-fire/aria-storage"},
       {:ex_aws, "~> 2.4"},
