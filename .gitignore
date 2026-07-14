@@ -28,4 +28,5 @@ holographic_item_memory-*.tar
 
 # Scratch ML data (MovieLens 100K raw + generated Parquet)
 /scratch_ml/
-/priv/
+/priv/*
+!/priv/plans/

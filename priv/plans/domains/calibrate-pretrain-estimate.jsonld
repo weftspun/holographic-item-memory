@@ -1,0 +1,24 @@
+{
+  "@context": { "vsekai": "https://v-sekai.org/", "domain": "vsekai:planning/domain/" },
+  "@type": "domain:Definition",
+  "name": "calibrate-pretrain-estimate",
+  "_purpose": "Resolve the 3 unknowns behind the pretrain estimate: (a) dataset size (#sessions/#items), (b) real embed throughput, (c) real GPU s/step for the sequential retention. Then recompute training = ceil(sessions/batch)*epochs*gpu_step and re-snapshot. Probes 2,3,5 map to a `mix recommender.bench` task.",
+  "variables": [{ "name": "known", "init": { "data_located": false, "dataset_size": false, "embed_tput": false, "xla_gpu": false, "gpu_step": false, "training_recomputed": false, "snapshotted": false } }],
+  "actions": {
+    "point_at_dataset": { "params": [], "duration": "PT10M", "body": [{ "pointer/set": "/known/data_located", "value": true }] },
+    "measure_dataset_size": { "params": [], "duration": "PT5M", "body": [{ "pointer/set": "/known/dataset_size", "value": true }] },
+    "measure_embed_throughput": { "params": [], "duration": "PT20M", "body": [{ "pointer/set": "/known/embed_tput", "value": true }] },
+    "build_xla_cuda": { "params": [], "duration": "PT30M", "body": [{ "pointer/set": "/known/xla_gpu", "value": true }] },
+    "measure_gpu_train_step": { "params": [], "duration": "PT15M", "body": [{ "pointer/set": "/known/gpu_step", "value": true }] },
+    "recompute_training_estimate": { "params": [], "duration": "PT5M", "body": [{ "pointer/set": "/known/training_recomputed", "value": true }] },
+    "reestimate_and_snapshot": { "params": [], "duration": "PT5M", "body": [{ "pointer/set": "/known/snapshotted", "value": true }] }
+  },
+  "methods": {
+    "find_out": { "params": [], "alternatives": [{ "name": "calibrate", "subtasks": [["get_data"], ["measure"], ["recompute"]] }] },
+    "get_data": { "params": [], "alternatives": [{ "name": "locate_count", "subtasks": [["point_at_dataset"], ["measure_dataset_size"]] }] },
+    "measure": { "params": [], "alternatives": [{ "name": "tput_and_gpu", "subtasks": [["measure_embed_throughput"], ["measure_gpu"]] }] },
+    "measure_gpu": { "params": [], "alternatives": [{ "name": "cuda", "subtasks": [["build_xla_cuda"], ["measure_gpu_train_step"]] }] },
+    "recompute": { "params": [], "alternatives": [{ "name": "recompute_and_save", "subtasks": [["recompute_training_estimate"], ["reestimate_and_snapshot"]] }] }
+  },
+  "tasks": [["find_out"]]
+}

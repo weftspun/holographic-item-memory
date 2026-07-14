@@ -1,0 +1,13 @@
+{
+  "captured": "2026-07-14",
+  "domain": "finish-data-path-code",
+  "total": "PT2H20M",
+  "note": "Remaining code to finish the real-data pretrain path (aux reshape + eval/bench harnesses already on PR #7). Fixture-verifiable; the real run still needs staged data + GPU.",
+  "plan": ["write_item_text_reader","wire_pretrain_data_flow","add_eval_data_mode","test_data_path_fixture"],
+  "steps": [
+    {"action":"write_item_text_reader","duration":"PT30M"},
+    {"action":"wire_pretrain_data_flow","duration":"PT1H"},
+    {"action":"add_eval_data_mode","duration":"PT20M"},
+    {"action":"test_data_path_fixture","duration":"PT30M"}
+  ]
+}

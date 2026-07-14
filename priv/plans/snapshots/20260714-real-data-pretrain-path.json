@@ -1,0 +1,32 @@
+{
+  "captured": "2026-07-14",
+  "domain": "real-data-pretrain-path-temporal",
+  "domain_file": "priv/plans/domains/real-data-pretrain-path.jsonld",
+  "host_basis": {
+    "host": "CPU-EXLA (no GPU)",
+    "tokenize_items_per_s": 12171,
+    "fuxi_train_s_per_step": 3.7,
+    "fuxi_train_batch": 8,
+    "fuxi_train_seq": 1024,
+    "train_gpu_assumption": "~100k sessions, batch 8, 3 epochs (~37.5k steps) at ~0.75s/step (5x GPU over 3.7s CPU; sequential 1024-step retention is latency-limited on GPU)"
+  },
+  "total": "PT12H19M",
+  "plan": ["stage_amazon_cc0", "convert_trajectories", "chrono_split_loo", "load_item_text", "embed_items_768_bumblebee", "residual_fsq_encode_ids", "build_item_aux_4x192", "persist_catalog_crdb", "wire_pretrain_data_mode", "train_fuxi_gpu", "eval_real_checkpoint"],
+  "temporal": {
+    "consistent": true,
+    "total": "PT12H19M",
+    "steps": [
+      { "action": "stage_amazon_cc0", "duration": "PT30M", "start": "PT0S", "end": "PT30M" },
+      { "action": "convert_trajectories", "duration": "PT10M", "start": "PT30M", "end": "PT40M" },
+      { "action": "chrono_split_loo", "duration": "PT5M", "start": "PT40M", "end": "PT45M" },
+      { "action": "load_item_text", "duration": "PT10M", "start": "PT45M", "end": "PT55M" },
+      { "action": "embed_items_768_bumblebee", "duration": "PT40M", "start": "PT55M", "end": "PT1H35M" },
+      { "action": "residual_fsq_encode_ids", "duration": "PT2M", "start": "PT1H35M", "end": "PT1H37M" },
+      { "action": "build_item_aux_4x192", "duration": "PT2M", "start": "PT1H37M", "end": "PT1H39M" },
+      { "action": "persist_catalog_crdb", "duration": "PT10M", "start": "PT1H39M", "end": "PT1H49M" },
+      { "action": "wire_pretrain_data_mode", "duration": "PT2H", "start": "PT1H49M", "end": "PT3H49M" },
+      { "action": "train_fuxi_gpu", "duration": "PT8H", "start": "PT3H49M", "end": "PT11H49M" },
+      { "action": "eval_real_checkpoint", "duration": "PT30M", "start": "PT11H49M", "end": "PT12H19M" }
+    ]
+  }
+}
