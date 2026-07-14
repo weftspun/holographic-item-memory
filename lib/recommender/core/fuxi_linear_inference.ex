@@ -502,7 +502,11 @@ defmodule Recommender.Core.FuxiLinearInference do
   defp layer_norm_impl(x, weight, bias) do
     mean = Nx.mean(x, axes: [-1], keep_axes: true)
     var = Nx.variance(x, axes: [-1], keep_axes: true)
-    x_norm = Nx.divide(Nx.subtract(x, mean), Nx.add(Nx.sqrt(var), 1.0e-6))
+    # eps goes INSIDE the sqrt: `sqrt(var + eps)`, not `sqrt(var) + eps`. Both
+    # protect the forward, but only the former keeps the gradient finite when the
+    # input is constant (var = 0) — otherwise d/dvar sqrt(var) = 1/(2·sqrt(0)) = ∞
+    # NaNs the backward. This is what makes degenerate (e.g. all-zero) aux safe.
+    x_norm = Nx.divide(Nx.subtract(x, mean), Nx.sqrt(Nx.add(var, 1.0e-6)))
     Nx.add(Nx.multiply(x_norm, weight), bias)
   end
 
@@ -555,6 +559,41 @@ defmodule Recommender.Core.FuxiLinearInference do
       |> Map.put("pred_head.bias", Nx.broadcast(0, {@vocab_size}) |> Nx.as_type({:f, 32}))
 
     Map.merge(base, block_params)
+  end
+
+  @doc """
+  Fresh **trainable** params for training from scratch — standard transformer init:
+  weight matrices `N(0, std)` (default `std = 0.02`), LayerNorm scales `1.0`, biases
+  `0.0`. Same keys/shapes as `init_full_params/1`, whose `iota`-based values are a
+  deterministic *smoke* init (huge logits) unsuitable for gradient descent.
+
+  LayerNorm scales are identified as rank-1 `*.weight` tensors. `opts[:seed]` seeds
+  the PRNG; other `opts` are forwarded to `init_full_params/1` for the shapes.
+  """
+  @spec init_random_params(keyword()) :: map()
+  def init_random_params(opts \\ []) do
+    seed = Keyword.get(opts, :seed, 0)
+    std = Keyword.get(opts, :std, 0.02)
+
+    {params, _key} =
+      init_full_params(opts)
+      |> Enum.reduce({%{}, Nx.Random.key(seed)}, fn {k, v}, {acc, key} ->
+        shape = Nx.shape(v)
+
+        cond do
+          String.ends_with?(k, ".bias") ->
+            {Map.put(acc, k, Nx.broadcast(0.0, shape)), key}
+
+          String.ends_with?(k, ".weight") and Nx.rank(v) == 1 ->
+            {Map.put(acc, k, Nx.broadcast(1.0, shape)), key}
+
+          true ->
+            {t, key} = Nx.Random.normal(key, 0.0, std, shape: shape, type: {:f, 32})
+            {Map.put(acc, k, t), key}
+        end
+      end)
+
+    params
   end
 
   @doc """
